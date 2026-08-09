@@ -43,3 +43,8 @@ For production email delivery, configure Custom SMTP in Supabase and use a sende
 `Senlie Budget <no-reply@auth.senlie.tech>`
 
 See `SUPABASE_AUTH_SETUP.md`.
+
+
+## Deploying to Vercel
+
+See `VERCEL_DEPLOY.md`. This build uses Vercel's native Next.js deployment and requires no custom output directory or standalone server.

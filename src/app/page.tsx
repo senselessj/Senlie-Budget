@@ -25,6 +25,21 @@ export default function Home() {
   const initialize = useAuth((s) => s.initialize)
   const setLanguage = useSenlieUI((s) => s.setLanguage)
   const language = useSenlieUI((s) => s.language)
+  const addSheetOpen = useSenlieUI((s) => s.addSheetOpen)
+  const editingTransactionId = useSenlieUI((s) => s.editingTransactionId)
+  const settingsOpen = useSenlieUI((s) => s.settingsOpen)
+  const addEntityType = useSenlieUI((s) => s.addEntityType)
+  const selectedTransactionId = useSenlieUI((s) => s.selectedTransactionId)
+  const activityFilterOpen = useSenlieUI((s) => s.activityFilterOpen)
+
+  const appSheetOpen = Boolean(
+    addSheetOpen ||
+    editingTransactionId ||
+    settingsOpen ||
+    addEntityType ||
+    selectedTransactionId ||
+    activityFilterOpen
+  )
 
   // Restore the Supabase browser session before deciding whether to show
   // authentication, onboarding, or the budget UI.
@@ -78,7 +93,7 @@ export default function Home() {
         <SenlieFooter />
       </main>
 
-      <BottomTabBar />
+      {!appSheetOpen && <BottomTabBar />}
 
       {/* Sheets — detail renders underneath the editor so Back can reveal it. */}
       <TransactionDetailSheet />

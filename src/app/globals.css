@@ -274,27 +274,54 @@ select {
 }
 
 /*
- * A sheet owns the bottom of the screen while it is open. `dvh` follows the
- * actually visible viewport on mobile (including browser/keyboard changes),
- * while the flex scroll region keeps its CTA reachable above the home area.
+ * App sheets own a real, bounded viewport. A max-height by itself was not
+ * enough for nested flex + Radix ScrollArea on short mobile/landscape
+ * viewports, which allowed the scroll viewport to paint underneath the CTA.
  */
 .senlie-sheet {
-  max-height: calc(100dvh - max(env(safe-area-inset-top), 12px));
+  max-height: calc(100dvh - max(env(safe-area-inset-top), 8px));
   overflow: hidden;
 }
 
+/* Full app workflows (transaction, settings, entity editor, details) get an
+ * explicit height so the middle region has a deterministic amount of space. */
+.senlie-full-sheet {
+  height: calc(100dvh - max(env(safe-area-inset-top), 8px));
+  max-height: calc(100dvh - max(env(safe-area-inset-top), 8px));
+}
+
 .senlie-sheet-scroll {
-  min-height: 0;
-  flex: 1 1 auto;
-  overflow-y: auto;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
 .senlie-sheet-footer {
-  flex-shrink: 0;
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  margin-top: 0 !important;
   padding-bottom: max(env(safe-area-inset-bottom), 16px);
-  background: var(--background);
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 -12px 28px -24px rgba(0, 0, 0, 0.55);
+}
+
+/* Radix/Vaul nested floating controls must remain interactive above the
+ * drawer overlay/content stack. */
+[data-slot="popover-content"] {
+  pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  .senlie-full-sheet {
+    width: min(640px, 100vw);
+    margin-inline: auto;
+  }
 }
 
 /* Any Vaul drawer, including locally-owned drawers such as Activity filters,

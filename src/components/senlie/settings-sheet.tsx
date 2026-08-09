@@ -66,7 +66,7 @@ export function SettingsSheet() {
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerContent className="senlie-sheet">
+      <DrawerContent className="senlie-sheet senlie-full-sheet">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center text-[17px] font-semibold tracking-tight">
             {settingsView === null ? t('settings.profile') : ''}

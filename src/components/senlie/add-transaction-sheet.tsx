@@ -213,7 +213,7 @@ export function AddTransactionSheet() {
 
   return (
     <Drawer open={sheetOpen} onOpenChange={(o) => { if (!o) closeSheet() }}>
-      <DrawerContent className="senlie-sheet">
+      <DrawerContent className="senlie-sheet senlie-full-sheet">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center text-[17px] font-semibold tracking-tight">
             {isEditing ? t('add.edit') : t('add.title')}
@@ -263,7 +263,7 @@ export function AddTransactionSheet() {
           </div>
         </div>
 
-        <ScrollArea className="min-h-0 flex-1" type="always">
+        <ScrollArea className="senlie-sheet-scroll" type="always">
           <div className="px-5 pb-4">
             {/* Amount hero */}
             <div className="py-6 text-center">

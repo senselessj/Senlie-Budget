@@ -135,7 +135,7 @@ export function TransactionDetailSheet() {
 
   return (
     <Drawer open={!!id} onOpenChange={(o) => !o && setId(null)}>
-      <DrawerContent className="senlie-sheet">
+      <DrawerContent className="senlie-sheet senlie-full-sheet">
         <DrawerHeader className="pb-0">
           <DrawerTitle className="sr-only">{t('detail.titleSr')}</DrawerTitle>
           <DrawerDescription className="sr-only">{t('detail.descSr')}</DrawerDescription>

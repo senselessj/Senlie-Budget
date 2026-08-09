@@ -202,7 +202,7 @@ export function AddEntitySheet() {
 
   return (
     <Drawer open={open} onOpenChange={(o) => !o && close()}>
-      <DrawerContent className="senlie-sheet">
+      <DrawerContent className="senlie-sheet senlie-full-sheet">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center text-[17px] font-semibold tracking-tight">
             {type ? t(titleKeys[type]) : ''}
@@ -212,7 +212,7 @@ export function AddEntitySheet() {
           </DrawerDescription>
         </DrawerHeader>
 
-        <ScrollArea className="min-h-0 flex-1" type="always">
+        <ScrollArea className="senlie-sheet-scroll" type="always">
           <div className="space-y-4 px-5 pb-4">
             {/* Name field — universal */}
             <div>

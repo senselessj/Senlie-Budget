@@ -24,6 +24,7 @@ interface AuthState {
   initialize: () => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<void>
   signUpWithPassword: (name: string, email: string, password: string) => Promise<PasswordSignupResult>
+  updatePassword: (password: string) => Promise<void>
   requestOtp: (email: string) => Promise<void>
   verifyOtp: (email: string, token: string) => Promise<void>
   signOut: () => Promise<void>
@@ -35,9 +36,9 @@ let authListenerStarted = false
 
 function calmError(message: string): string {
   const m = message.toLowerCase()
-  if (m.includes('invalid login credentials')) return 'Incorrect email or password.'
+  if (m.includes('invalid login credentials')) return 'Incorrect email or password. If this account was created with a one-time email code, use that once and set a password in Settings.'
   if (m.includes('email not confirmed')) return 'Confirm your email first, then sign in.'
-  if (m.includes('user already registered') || m.includes('already been registered')) return 'An account with this email already exists. Try signing in.'
+  if (m.includes('user already registered') || m.includes('already been registered')) return 'An account with this email already exists. If it was created with a one-time code, sign in with that once and set a password in Settings.'
   if (m.includes('password') && (m.includes('weak') || m.includes('least'))) return 'Choose a stronger password. Use at least 8 characters.'
   if (m.includes('rate') || m.includes('too many')) return 'Too many requests. Wait a moment and try again.'
   if (m.includes('expired')) return 'That code expired. Request a new one.'
@@ -224,6 +225,29 @@ export const useAuth = create<AuthState>((set, get) => ({
       return 'confirmation_required'
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not create the account.'
+      set({ error: calmError(msg) })
+      throw e
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+
+  updatePassword: async (password) => {
+    set({ isLoading: true, error: null })
+    try {
+      const client = requireSupabase()
+      if (password.length < 8) throw new Error('Choose a password with at least 8 characters.')
+
+      const { data: sessionData, error: sessionError } = await client.auth.getSession()
+      if (sessionError) throw sessionError
+      if (!sessionData.session) throw new Error('Sign in first before setting a password.')
+
+      const { error } = await client.auth.updateUser({ password })
+      if (error) throw error
+      set({ error: null })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not update your password.'
       set({ error: calmError(msg) })
       throw e
     } finally {

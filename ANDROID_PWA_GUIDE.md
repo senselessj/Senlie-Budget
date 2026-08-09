@@ -80,3 +80,12 @@ This is expected. Keep the keystore and passwords safe. You need the same signin
 ## v0.4.3 branding note
 
 The Android/PWA icon set now uses the same Senlie `S` symbol shown inside the app. If an already-installed PWA still shows the old Z.ai placeholder, uninstall the existing PWA once and reinstall it after the v0.4.3 deployment. Re-run Bubblewrap init/build for a fresh APK/AAB so Android packages the new manifest icons.
+
+## v0.4.5: `cli ERROR Invalid URL` during `bubblewrap init`
+
+Senlie now exposes two manifests:
+
+- `/manifest.webmanifest` — browser/PWA installation manifest.
+- `/android-manifest.webmanifest` — minimal Bubblewrap/TWA manifest with absolute HTTPS launch and icon URLs.
+
+If Bubblewrap reports `Invalid URL` immediately after "Initializing application from Web Manifest", deploy v0.4.5 first, verify both URLs return JSON, and rerun `BUILD_ANDROID_APK.bat`.

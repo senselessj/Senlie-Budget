@@ -29,20 +29,21 @@ try {
   process.exit(1)
 }
 
-const manifestUrl = `${origin}/manifest.webmanifest`
-console.log(`\nChecking the live Senlie PWA:\n${manifestUrl}\n`)
+const pwaManifestUrl = `${origin}/manifest.webmanifest`
+const manifestUrl = `${origin}/android-manifest.webmanifest`
+console.log(`\nChecking the live Senlie PWA:\n${pwaManifestUrl}\n`)
 
 try {
-  const response = await fetch(manifestUrl, {
+  const response = await fetch(pwaManifestUrl, {
     redirect: 'follow',
-    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.3' },
+    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.5' },
   })
 
   if (!response.ok) {
     console.error(`The live PWA manifest returned HTTP ${response.status} ${response.statusText}.`)
     console.error('\nThe Android wrapper can only be created after the PWA version is deployed to Vercel.')
-    console.error('Push/deploy Senlie Budget v0.4.3, then verify this URL opens in your browser:')
-    console.error(manifestUrl)
+    console.error('Push/deploy Senlie Budget v0.4.5, then verify this URL opens in your browser:')
+    console.error(pwaManifestUrl)
     console.error('\nAfter it displays JSON, run BUILD_ANDROID_APK.bat again.\n')
     process.exit(1)
   }
@@ -74,8 +75,42 @@ try {
   console.error('Could not reach the live PWA manifest.')
   console.error(error instanceof Error ? error.message : String(error))
   console.error('\nOpen this URL in your browser first:')
-  console.error(manifestUrl)
+  console.error(pwaManifestUrl)
   console.error('If it does not show the Senlie manifest JSON, fix/deploy Vercel first.\n')
+  process.exit(1)
+}
+
+console.log(`\nChecking the Bubblewrap-safe manifest:\n${manifestUrl}\n`)
+
+try {
+  const response = await fetch(manifestUrl, {
+    redirect: 'follow',
+    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.5' },
+  })
+
+  if (!response.ok) {
+    console.error(`The Android manifest returned HTTP ${response.status} ${response.statusText}.`)
+    console.error('Deploy Senlie Budget v0.4.5 before running the Android builder.\n')
+    process.exit(1)
+  }
+
+  const manifest = await response.json()
+  const urls = [manifest.start_url, manifest.scope, ...(manifest.icons || []).map((icon) => icon.src)]
+  for (const value of urls) {
+    const parsed = new URL(value)
+    if (parsed.protocol !== 'https:' || parsed.origin !== origin) {
+      throw new Error(`Manifest contains a non-HTTPS or cross-origin URL: ${value}`)
+    }
+  }
+
+  const icon512 = (manifest.icons || []).find((icon) => String(icon.sizes || '').includes('512x512'))
+  if (!icon512) throw new Error('Android manifest is missing a 512x512 icon.')
+
+  console.log('Bubblewrap manifest OK: all launch/icon URLs are absolute HTTPS URLs.')
+} catch (error) {
+  console.error('The Bubblewrap-safe manifest is invalid.')
+  console.error(error instanceof Error ? error.message : String(error))
+  console.error(`\nOpen this URL and make sure v0.4.5 is deployed:\n${manifestUrl}\n`)
   process.exit(1)
 }
 

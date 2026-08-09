@@ -27,6 +27,8 @@ import {
   Shield,
   Target,
   Globe,
+  KeyRound,
+  Loader2,
 } from 'lucide-react'
 import { useSenlieUI, type SettingsView } from '@/lib/store'
 import { useAuth } from '@/lib/auth-store'
@@ -35,6 +37,9 @@ import { useT } from '@/hooks/use-t'
 import { SenlieSymbol } from '@/components/senlie/senlie-symbol'
 import { InstallAppRow } from '@/components/pwa/install-app-row'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -114,6 +119,7 @@ function SettingsRoot() {
   const { data: pickers } = useAccountsAndCategories()
   const { data: recurring } = useRecurring()
   const haptic = useHaptic()
+  const [passwordOpen, setPasswordOpen] = React.useState(false)
 
   const userName = home?.user.name ?? authUser?.name ?? 'Friend'
   const accountCount = pickers?.accounts.length ?? 4
@@ -163,6 +169,19 @@ function SettingsRoot() {
           Edit
         </button>
       </div>
+
+      {/* Account */}
+      <SectionLabel>Account</SectionLabel>
+      <SettingsGroup>
+        <SettingsRow
+          icon={KeyRound}
+          label="Set or change password"
+          value="Password"
+          onClick={() => setPasswordOpen(true)}
+          last
+        />
+      </SettingsGroup>
+      <PasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       {/* Financial settings */}
       <SectionLabel>Financial settings</SectionLabel>
@@ -368,7 +387,7 @@ function SettingsRoot() {
           <SenlieSymbol size={36} className="text-foreground" />
           <div className="text-[16px] font-semibold tracking-tight">Senlie Budget</div>
           <div className="text-[12px] text-muted-foreground">by Senlie Technologies</div>
-          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 0.4.3</div>
+          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 0.4.4</div>
           <div className="text-[11px] text-muted-foreground/70">Your money, clearly.</div>
         </div>
         <SettingsRow
@@ -392,6 +411,123 @@ function SettingsRoot() {
         Sign out
       </button>
     </>
+  )
+}
+
+
+function PasswordDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const updatePassword = useAuth((s) => s.updatePassword)
+  const isLoading = useAuth((s) => s.isLoading)
+  const storeError = useAuth((s) => s.error)
+  const clearError = useAuth((s) => s.clearError)
+  const [password, setPassword] = React.useState('')
+  const [confirmPassword, setConfirmPassword] = React.useState('')
+  const [localError, setLocalError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!open) {
+      setPassword('')
+      setConfirmPassword('')
+      setLocalError(null)
+      clearError()
+    }
+  }, [open, clearError])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLocalError(null)
+    clearError()
+    if (password.length < 8) {
+      setLocalError('Use at least 8 characters.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setLocalError('Passwords do not match.')
+      return
+    }
+
+    try {
+      await updatePassword(password)
+      toast.success('Password updated.')
+      onOpenChange(false)
+    } catch {
+      // Auth store owns the backend-visible error.
+    }
+  }
+
+  const error = localError ?? storeError
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[390px] rounded-[22px] border-border/60 p-5">
+        <DialogHeader className="text-left">
+          <DialogTitle className="text-[20px] tracking-tight">Set your password</DialogTitle>
+          <DialogDescription className="text-[13px] leading-relaxed">
+            This password belongs to your Supabase Auth account. Senlie never stores it in the public users table.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="senlie-new-password">New password</Label>
+            <Input
+              id="senlie-new-password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (error) {
+                  setLocalError(null)
+                  clearError()
+                }
+              }}
+              placeholder="At least 8 characters"
+              className="h-12 rounded-[14px]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="senlie-confirm-password">Confirm password</Label>
+            <Input
+              id="senlie-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value)
+                if (error) {
+                  setLocalError(null)
+                  clearError()
+                }
+              }}
+              placeholder="Repeat password"
+              className="h-12 rounded-[14px]"
+            />
+          </div>
+          {error && (
+            <div className="rounded-[12px] bg-negative/10 px-3 py-2.5 text-[13px] text-negative">
+              {error}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[var(--senlie)] text-[15px] font-semibold text-[var(--senlie-foreground)] transition-all hover:opacity-95 disabled:opacity-60"
+          >
+            {isLoading ? <Loader2 size={17} className="animate-spin" /> : <KeyRound size={17} />}
+            {isLoading ? 'Saving…' : 'Save password'}
+          </button>
+          <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+            Existing email-code accounts can sign in with a code one final time, set a password here, then use password sign-in from then on.
+          </p>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

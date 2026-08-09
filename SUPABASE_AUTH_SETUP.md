@@ -1,72 +1,72 @@
-# Senlie Budget — Supabase OTP + branded email setup
+# Senlie Budget — Supabase password + OTP authentication
 
-The app code is already configured for six-digit email OTP authentication.
+Senlie Budget v0.4.3 uses **email + password as the default auth flow** and keeps the existing six-digit email OTP flow as an optional fallback.
 
-## A. Make Supabase send a code instead of a magic link
+## A. Password sign-in is already implemented
 
-In your hosted Supabase project:
+Senlie now uses Supabase Auth directly:
 
-1. Go to **Authentication → Email Templates**.
-2. Open the **Magic Link / OTP** authentication template.
-3. Set the subject to something like:
+- `signUp({ email, password })` to create an account
+- `signInWithPassword({ email, password })` to sign in
+- the existing `signInWithOtp()` + `verifyOtp()` flow remains available behind **Use a one-time email code instead**
 
-   `Your Senlie Budget code`
+Passwords are handled by Supabase Auth. They are never written into Senlie's `public.users` table or any budget/transaction table.
 
-4. Replace the HTML with the contents of `SUPABASE_OTP_EMAIL_TEMPLATE.html`.
-5. Save.
+The existing `SUPABASE_SETUP.sql` trigger works for both password and OTP signups, so **no database migration is required** for this auth change.
 
-The important part is `{{ .Token }}`. Supabase sees that token variable and sends the one-time password code used by Senlie's verification screen.
+## B. Decide whether signup requires an email confirmation
 
-## B. Brand the sender as Senlie Budget
+In Supabase, go to **Authentication → Providers → Email**.
 
-For production, configure **Authentication → SMTP Settings / Custom SMTP** (the exact dashboard navigation can shift slightly over time).
+### Option 1 — Confirm Email OFF
 
-Use your SMTP provider credentials and set the sender/display name to:
+Best for development/testing and for avoiding the built-in email rate limit during account creation.
 
-`Senlie Budget`
+- Creating an account returns an authenticated session immediately.
+- No signup email is required.
+- Users can enter Senlie immediately after creating the password.
 
-Recommended sender address once you own/configure the domain:
+Trade-off: the email address is not verified before the account is usable.
 
-`no-reply@auth.senlie.tech`
+### Option 2 — Confirm Email ON
 
-or
+Better when verified ownership of the email address matters.
 
-`account@senlie.tech`
+- Signup creates the account but does not return an active session yet.
+- Supabase sends one confirmation email.
+- Senlie shows a **Confirm your email** screen.
+- After the confirmation link is opened, Supabase returns the user to the origin Senlie is actually running on.
 
-A production SMTP provider can be Resend, Postmark, AWS SES, SendGrid, Brevo, or another SMTP-compatible provider.
+Senlie explicitly sets the signup `emailRedirectTo` from `window.location.origin`, so a production signup on Vercel points back to the production site rather than hard-coded localhost.
 
-Configure SPF/DKIM/DMARC for your sending domain according to your email provider so authentication mail is less likely to land in spam.
-
-## C. OTP settings
-
-Supabase email OTP is passwordless. Senlie calls:
-
-- `signInWithOtp()` to request the email
-- `verifyOtp(..., type: 'email')` to create the session
-
-New email addresses are allowed to create an account automatically.
-
-The app implements a 60-second resend UI timer to match the normal Supabase OTP request cadence.
-
-## D. What the user sees
+For the current deployment, also set:
 
 ```text
-Senlie Budget
-Your money, clearly.
+Site URL
+https://senliebudget-alpha.vercel.app
 
-Email
-you@example.com
-
-[ Continue with email ]
-
-        ↓
-
-Check your email
-We sent a 6-digit Senlie code to yo••••@example.com
-
-[ 4 ][ 8 ][ 2 ][ 1 ][ 9 ][ 7 ]
-
-[ Verify & continue ]
+Redirect URLs
+https://senliebudget-alpha.vercel.app/**
+http://localhost:3000/**
 ```
 
-No password creation, confirmation-link screen, or password-reset flow is needed for normal sign-in.
+## C. Keep OTP as an optional fallback
+
+If you want the **Use a one-time email code instead** button to work:
+
+1. Go to **Authentication → Email Templates**.
+2. Open the Magic Link / OTP template.
+3. Use `SUPABASE_OTP_EMAIL_TEMPLATE.html`.
+4. Keep `{{ .Token }}` in the template so Senlie receives a six-digit OTP rather than depending on a magic-link-only UI.
+
+The OTP path still has provider/rate limits, but it is no longer required for normal sign-in or normal account creation.
+
+## D. Production email recommendation
+
+Supabase's built-in mail service is intended mainly for testing and is rate-limited. If you keep email confirmation, OTP, or password recovery enabled in production, configure **Custom SMTP** with a provider such as Resend/Postmark/SES/Brevo and use a branded sender such as:
+
+```text
+Senlie Budget <account@senlie.tech>
+```
+
+Configure SPF/DKIM/DMARC according to the email provider.

@@ -2,7 +2,21 @@
 
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Loader2, AlertCircle, ArrowRight, Sun, Moon, Monitor, Check, ShieldCheck, ArrowLeft } from 'lucide-react'
+import {
+  Mail,
+  Loader2,
+  AlertCircle,
+  ArrowRight,
+  Sun,
+  Moon,
+  Monitor,
+  Check,
+  ShieldCheck,
+  ArrowLeft,
+  LockKeyhole,
+  UserRound,
+  KeyRound,
+} from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { SenlieSymbol } from '@/components/senlie/senlie-symbol'
 import { Input } from '@/components/ui/input'
@@ -15,7 +29,9 @@ import { LANGUAGES } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 type ThemeOption = 'light' | 'dark' | 'system'
-type AuthStep = 'email' | 'code'
+type AuthMethod = 'password' | 'otp'
+type PasswordMode = 'signin' | 'signup'
+type OtpStep = 'email' | 'code'
 
 const THEME_OPTIONS: { key: ThemeOption; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
   { key: 'light', label: 'Light', icon: Sun },
@@ -35,29 +51,93 @@ function maskedEmail(email: string) {
 
 export function AuthScreen() {
   const t = useT()
-  const [step, setStep] = React.useState<AuthStep>('email')
+  const [method, setMethod] = React.useState<AuthMethod>('password')
+  const [passwordMode, setPasswordMode] = React.useState<PasswordMode>('signin')
+  const [otpStep, setOtpStep] = React.useState<OtpStep>('email')
   const [email, setEmail] = React.useState('')
+  const [name, setName] = React.useState('')
+  const [password, setPassword] = React.useState('')
+  const [confirmPassword, setConfirmPassword] = React.useState('')
   const [code, setCode] = React.useState('')
   const [secondsLeft, setSecondsLeft] = React.useState(0)
+  const [confirmationEmail, setConfirmationEmail] = React.useState<string | null>(null)
+  const [localError, setLocalError] = React.useState<string | null>(null)
 
+  const signInWithPassword = useAuth((s) => s.signInWithPassword)
+  const signUpWithPassword = useAuth((s) => s.signUpWithPassword)
   const requestOtp = useAuth((s) => s.requestOtp)
   const verifyOtp = useAuth((s) => s.verifyOtp)
   const pendingEmail = useAuth((s) => s.pendingEmail)
   const isLoading = useAuth((s) => s.isLoading)
-  const error = useAuth((s) => s.error)
+  const storeError = useAuth((s) => s.error)
   const clearError = useAuth((s) => s.clearError)
+  const error = localError ?? storeError
 
   React.useEffect(() => {
-    if (step !== 'code' || secondsLeft <= 0) return
+    if (otpStep !== 'code' || secondsLeft <= 0) return
     const timer = window.setInterval(() => setSecondsLeft((v) => Math.max(0, v - 1)), 1000)
     return () => window.clearInterval(timer)
-  }, [step, secondsLeft])
+  }, [otpStep, secondsLeft])
+
+  const clearVisibleError = () => {
+    setLocalError(null)
+    clearError()
+  }
+
+  const switchMethod = (next: AuthMethod) => {
+    clearVisibleError()
+    setMethod(next)
+    setOtpStep('email')
+    setCode('')
+    setSecondsLeft(0)
+    setConfirmationEmail(null)
+  }
+
+  const switchPasswordMode = (next: PasswordMode) => {
+    clearVisibleError()
+    setPasswordMode(next)
+    setPassword('')
+    setConfirmPassword('')
+    setConfirmationEmail(null)
+  }
+
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    clearVisibleError()
+
+    if (passwordMode === 'signup') {
+      if (password !== confirmPassword) {
+        setLocalError(t('auth.passwordsDontMatch'))
+        return
+      }
+      if (password.length < 8) {
+        setLocalError(t('auth.passwordHint'))
+        return
+      }
+
+      try {
+        const result = await signUpWithPassword(name, email, password)
+        if (result === 'confirmation_required') {
+          setConfirmationEmail(email.trim().toLowerCase())
+        }
+      } catch {
+        // Store owns the backend-visible error state.
+      }
+      return
+    }
+
+    try {
+      await signInWithPassword(email, password)
+    } catch {
+      // Store owns the visible error state.
+    }
+  }
 
   const sendCode = async () => {
-    clearError()
+    clearVisibleError()
     try {
       await requestOtp(email)
-      setStep('code')
+      setOtpStep('code')
       setCode('')
       setSecondsLeft(RESEND_SECONDS)
     } catch {
@@ -66,7 +146,7 @@ export function AuthScreen() {
   }
 
   const verifyCode = async () => {
-    clearError()
+    clearVisibleError()
     try {
       await verifyOtp(pendingEmail ?? email, code)
     } catch {
@@ -74,15 +154,15 @@ export function AuthScreen() {
     }
   }
 
-  const submit = async (e: React.FormEvent) => {
+  const submitOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (step === 'email') await sendCode()
+    if (otpStep === 'email') await sendCode()
     else await verifyCode()
   }
 
-  const backToEmail = () => {
-    clearError()
-    setStep('email')
+  const backToOtpEmail = () => {
+    clearVisibleError()
+    setOtpStep('email')
     setCode('')
     setSecondsLeft(0)
   }
@@ -115,23 +195,195 @@ export function AuthScreen() {
 
           <div className="mt-8 overflow-hidden rounded-[22px] bg-card shadow-card">
             <AnimatePresence mode="wait" initial={false}>
-              {step === 'email' ? (
+              {confirmationEmail ? (
+                <motion.div
+                  key="confirm-email"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.24, ease: EASE }}
+                  className="p-5"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--senlie-soft)] text-[var(--senlie)]">
+                    <Mail size={21} />
+                  </div>
+                  <h2 className="mt-4 text-[20px] font-semibold tracking-tight">{t('auth.confirmEmailTitle')}</h2>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                    {t('auth.confirmEmailDesc')} <span className="font-medium text-foreground">{maskedEmail(confirmationEmail)}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmationEmail(null)
+                      switchPasswordMode('signin')
+                    }}
+                    className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[var(--senlie)] text-[15px] font-semibold text-[var(--senlie-foreground)] transition-all hover:opacity-95 active:scale-[0.99]"
+                  >
+                    {t('auth.backToSignIn')}
+                  </button>
+                </motion.div>
+              ) : method === 'password' ? (
                 <motion.form
-                  key="email"
-                  initial={{ opacity: 0, x: -8 }}
+                  key={`password-${passwordMode}`}
+                  initial={{ opacity: 0, x: passwordMode === 'signup' ? 10 : -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: passwordMode === 'signup' ? -10 : 10 }}
+                  transition={{ duration: 0.24, ease: EASE }}
+                  onSubmit={submitPassword}
+                  className="p-5"
+                >
+                  <div className="mb-5">
+                    <h2 className="text-[20px] font-semibold tracking-tight">
+                      {passwordMode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
+                    </h2>
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                      {passwordMode === 'signin' ? t('auth.passwordSignInDesc') : t('auth.passwordSignUpDesc')}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {passwordMode === 'signup' && (
+                      <Field
+                        id="name"
+                        label={t('auth.name')}
+                        icon={UserRound}
+                        autoComplete="name"
+                        placeholder="Jason"
+                        type="text"
+                        value={name}
+                        onChange={(v) => {
+                          setName(v)
+                          if (error) clearVisibleError()
+                        }}
+                        required
+                      />
+                    )}
+
+                    <Field
+                      id="email"
+                      label={t('auth.email')}
+                      icon={Mail}
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      type="email"
+                      value={email}
+                      onChange={(v) => {
+                        setEmail(v)
+                        if (error) clearVisibleError()
+                      }}
+                      required
+                    />
+
+                    <Field
+                      id="password"
+                      label={t('auth.password')}
+                      icon={LockKeyhole}
+                      autoComplete={passwordMode === 'signin' ? 'current-password' : 'new-password'}
+                      placeholder="••••••••"
+                      type="password"
+                      value={password}
+                      onChange={(v) => {
+                        setPassword(v)
+                        if (error) clearVisibleError()
+                      }}
+                      required
+                    />
+
+                    {passwordMode === 'signup' && (
+                      <>
+                        <Field
+                          id="confirm-password"
+                          label={t('auth.confirmPassword')}
+                          icon={KeyRound}
+                          autoComplete="new-password"
+                          placeholder="••••••••"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(v) => {
+                            setConfirmPassword(v)
+                            if (error) clearVisibleError()
+                          }}
+                          required
+                        />
+                        <p className="-mt-1 text-[11px] leading-relaxed text-muted-foreground/75">{t('auth.passwordHint')}</p>
+                      </>
+                    )}
+                  </div>
+
+                  <AuthError error={error} />
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || !email.trim() || !password || (passwordMode === 'signup' && (!name.trim() || !confirmPassword))}
+                    className={cn(
+                      'mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-[14px] text-[15px] font-semibold text-[var(--senlie-foreground)] transition-all',
+                      'bg-[var(--senlie)] hover:opacity-95 active:scale-[0.99]',
+                      (isLoading || !email.trim() || !password || (passwordMode === 'signup' && (!name.trim() || !confirmPassword))) && 'cursor-not-allowed opacity-60'
+                    )}
+                  >
+                    {isLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <>
+                        <span>{passwordMode === 'signin' ? t('auth.signInCta') : t('auth.signUpCta')}</span>
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+
+                  <div className="mt-4 text-center text-[12px] text-muted-foreground">
+                    {passwordMode === 'signin' ? t('auth.noAccount') : t('auth.haveAccount')}{' '}
+                    <button
+                      type="button"
+                      onClick={() => switchPasswordMode(passwordMode === 'signin' ? 'signup' : 'signin')}
+                      className="font-semibold text-[var(--senlie)] hover:underline"
+                    >
+                      {passwordMode === 'signin' ? t('auth.signUp') : t('auth.signIn')}
+                    </button>
+                  </div>
+
+                  <AuthDivider label={t('auth.or')} />
+
+                  <button
+                    type="button"
+                    onClick={() => switchMethod('otp')}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-[13px] bg-muted/70 px-3 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Mail size={15} />
+                    {t('auth.useCodeInstead')}
+                  </button>
+
+                  <div className="mt-4 flex items-start gap-2.5 rounded-[12px] bg-muted/55 px-3 py-3 text-[12px] leading-relaxed text-muted-foreground">
+                    <ShieldCheck size={15} className="mt-0.5 shrink-0 text-[var(--senlie)]" />
+                    <span>{t('auth.emailPasswordNote')}</span>
+                  </div>
+                </motion.form>
+              ) : otpStep === 'email' ? (
+                <motion.form
+                  key="otp-email"
+                  initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -12 }}
                   transition={{ duration: 0.24, ease: EASE }}
-                  onSubmit={submit}
+                  onSubmit={submitOtp}
                   className="p-5"
                 >
+                  <button
+                    type="button"
+                    onClick={() => switchMethod('password')}
+                    className="-ml-1 mb-4 flex h-8 items-center gap-1 rounded-full px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <ArrowLeft size={14} />
+                    {t('auth.usePasswordInstead')}
+                  </button>
+
                   <div className="mb-5">
                     <h2 className="text-[20px] font-semibold tracking-tight">{t('auth.emailTitle')}</h2>
                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{t('auth.emailDesc')}</p>
                   </div>
 
                   <Field
-                    id="email"
+                    id="otp-email"
                     label={t('auth.email')}
                     icon={Mail}
                     autoComplete="email"
@@ -140,7 +392,7 @@ export function AuthScreen() {
                     value={email}
                     onChange={(v) => {
                       setEmail(v)
-                      if (error) clearError()
+                      if (error) clearVisibleError()
                     }}
                     required
                   />
@@ -166,17 +418,17 @@ export function AuthScreen() {
                 </motion.form>
               ) : (
                 <motion.form
-                  key="code"
+                  key="otp-code"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 12 }}
                   transition={{ duration: 0.24, ease: EASE }}
-                  onSubmit={submit}
+                  onSubmit={submitOtp}
                   className="p-5"
                 >
                   <button
                     type="button"
-                    onClick={backToEmail}
+                    onClick={backToOtpEmail}
                     className="-ml-1 mb-4 flex h-8 items-center gap-1 rounded-full px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <ArrowLeft size={14} />
@@ -197,7 +449,7 @@ export function AuthScreen() {
                       value={code}
                       onChange={(value) => {
                         setCode(value.replace(/\D/g, ''))
-                        if (error) clearError()
+                        if (error) clearVisibleError()
                       }}
                       inputMode="numeric"
                       autoComplete="one-time-code"
@@ -249,10 +501,19 @@ export function AuthScreen() {
             </AnimatePresence>
           </div>
 
-          <p className="mt-4 px-3 text-center text-[11px] leading-relaxed text-muted-foreground/60">{t('auth.otpHint')}</p>
           <p className="mt-6 text-center text-[11px] text-muted-foreground/60">{t('auth.bySenlie')}</p>
         </motion.div>
       </main>
+    </div>
+  )
+}
+
+function AuthDivider({ label }: { label: string }) {
+  return (
+    <div className="my-4 flex items-center gap-3" aria-hidden="true">
+      <div className="h-px flex-1 bg-border" />
+      <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/55">{label}</span>
+      <div className="h-px flex-1 bg-border" />
     </div>
   )
 }

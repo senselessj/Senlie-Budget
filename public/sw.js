@@ -1,8 +1,9 @@
-const STATIC_CACHE = 'senlie-static-v1'
+const STATIC_CACHE = 'senlie-static-v2'
 const OFFLINE_URL = '/offline.html'
 const STATIC_ASSETS = [
   OFFLINE_URL,
   '/logo.svg',
+  '/favicon.ico',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-512.png',

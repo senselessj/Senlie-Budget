@@ -1,4 +1,4 @@
-# Senlie Budget — Android / PWA guide (v0.4.1)
+# Senlie Budget — Android / PWA guide (v0.4.3)
 
 ## First: deploy the PWA
 
@@ -68,10 +68,15 @@ Without successful Digital Asset Links verification, Android can fall back to br
 The deployed website is still an older Senlie version. Push/deploy this PWA build first.
 
 ### Builder stopped immediately after printing the manifest URL
-v0.4.0 had a Windows process-launch bug around `npx.cmd`. v0.4.1 runs it through `cmd.exe` and reports process errors.
+v0.4.0 had a Windows process-launch bug around `npx.cmd`. v0.4.2 runs it through `cmd.exe` and reports process errors.
 
 ### Java / JDK / Android SDK error
 Let Bubblewrap install/configure its external dependencies on first run, or configure existing JDK/Android SDK paths. `bubblewrap doctor` can validate the environment.
 
 ### Signing key prompt
 This is expected. Keep the keystore and passwords safe. You need the same signing identity for future updates to the same Android app.
+
+
+## v0.4.3 branding note
+
+The Android/PWA icon set now uses the same Senlie `S` symbol shown inside the app. If an already-installed PWA still shows the old Z.ai placeholder, uninstall the existing PWA once and reinstall it after the v0.4.3 deployment. Re-run Bubblewrap init/build for a fresh APK/AAB so Android packages the new manifest icons.

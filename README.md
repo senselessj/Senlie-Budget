@@ -2,7 +2,7 @@
 
 Personal budgeting and expense management by **Senlie Technologies**.
 
-## v0.3.0 — Supabase-native + Email OTP
+## v0.4.3 — Supabase-native + Password Auth + PWA/Android
 
 This build removes Prisma from Senlie Budget's runtime completely.
 
@@ -12,7 +12,7 @@ Runtime architecture:
 
 ```text
 Senlie Budget
-   ├─ Supabase Auth (email OTP)
+   ├─ Supabase Auth (email + password, optional OTP)
    ├─ HttpOnly verified app session cookie
    ├─ Next.js API financial engine
    └─ Supabase Data API + RLS
@@ -25,7 +25,7 @@ Senlie Budget
 1. Create a Supabase project.
 2. Open **SQL Editor** and run `SUPABASE_SETUP.sql` once.
 3. Copy `.env.example` to `.env.local` and add only your project URL and publishable/anon key.
-4. Configure the OTP email template using `SUPABASE_OTP_EMAIL_TEMPLATE.html` (see `SUPABASE_AUTH_SETUP.md`).
+4. Configure password/email behavior in Supabase using `SUPABASE_AUTH_SETUP.md`. OTP is now optional.
 5. Run `npm install` once, then `npm run dev` — or double-click `START_SENLIE.bat` on Windows.
 
 That is the entire application setup.
@@ -36,7 +36,7 @@ Writes are sent to Supabase immediately. React Query refreshes open finance view
 
 ### Authentication
 
-There is no password screen. Enter an email → Senlie sends a six-digit OTP → enter the code → authenticated. New emails create a Supabase Auth account automatically.
+Email + password is now the default. Users can create an account or sign in without requesting an OTP. The six-digit email OTP flow is still available as an optional fallback. If Supabase **Confirm Email** is disabled, password signup authenticates immediately; if it is enabled, Senlie waits for the one confirmation email.
 
 For production email delivery, configure Custom SMTP in Supabase and use a sender such as:
 

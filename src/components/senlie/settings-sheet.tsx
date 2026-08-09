@@ -368,7 +368,7 @@ function SettingsRoot() {
           <SenlieSymbol size={36} className="text-foreground" />
           <div className="text-[16px] font-semibold tracking-tight">Senlie Budget</div>
           <div className="text-[12px] text-muted-foreground">by Senlie Technologies</div>
-          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 0.4.0</div>
+          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 0.4.3</div>
           <div className="text-[11px] text-muted-foreground/70">Your money, clearly.</div>
         </div>
         <SettingsRow

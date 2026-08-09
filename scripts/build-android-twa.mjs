@@ -35,13 +35,13 @@ console.log(`\nChecking the live Senlie PWA:\n${manifestUrl}\n`)
 try {
   const response = await fetch(manifestUrl, {
     redirect: 'follow',
-    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.1' },
+    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.3' },
   })
 
   if (!response.ok) {
     console.error(`The live PWA manifest returned HTTP ${response.status} ${response.statusText}.`)
     console.error('\nThe Android wrapper can only be created after the PWA version is deployed to Vercel.')
-    console.error('Push/deploy Senlie Budget v0.4.1, then verify this URL opens in your browser:')
+    console.error('Push/deploy Senlie Budget v0.4.3, then verify this URL opens in your browser:')
     console.error(manifestUrl)
     console.error('\nAfter it displays JSON, run BUILD_ANDROID_APK.bat again.\n')
     process.exit(1)
@@ -81,10 +81,18 @@ try {
 
 console.log(`\nCreating Senlie Budget Android wrapper from:\n${manifestUrl}\n`)
 
-const bubblewrapArgs = [
+// Use `npm exec` instead of `npx`. On current npm versions this is the
+// unambiguous form for running a binary supplied by a temporary package:
+//   npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap ...
+//
+// v0.4.1 quoted every npx argument when going through cmd.exe on Windows.
+// Some Windows/npm combinations then treated "--yes" as a package/tag,
+// producing EINVALIDTAGNAME before Bubblewrap ever launched.
+const npmArgs = [
+  'exec',
   '--yes',
-  '--package',
-  '@bubblewrap/cli@1.24.1',
+  '--package=@bubblewrap/cli@1.24.1',
+  '--',
   'bubblewrap',
   'init',
   `--manifest=${manifestUrl}`,
@@ -92,17 +100,23 @@ const bubblewrapArgs = [
 
 let result
 if (process.platform === 'win32') {
-  // .cmd files cannot reliably be spawned directly with shell:false on Windows.
-  // Use cmd.exe explicitly so npx actually starts and Bubblewrap remains interactive.
+  // npm is a .cmd shim on Windows. Run it through cmd.exe, but only quote the
+  // manifest value (which we control as a normalized HTTPS URL), not npm flags.
   const comspec = process.env.ComSpec || 'cmd.exe'
-  const commandLine = `npx ${bubblewrapArgs.map((arg) => `"${arg.replaceAll('"', '\\"')}"`).join(' ')}`
-  result = spawnSync(comspec, ['/d', '/s', '/c', commandLine], {
+  const commandLine = [
+    'npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap init',
+    `--manifest="${manifestUrl}"`,
+  ].join(' ')
+
+  console.log(`Running: ${commandLine}\n`)
+  result = spawnSync(comspec, ['/d', '/c', commandLine], {
     cwd: new URL('../android-twa/', import.meta.url),
     stdio: 'inherit',
     windowsHide: false,
   })
 } else {
-  result = spawnSync('npx', bubblewrapArgs, {
+  console.log(`Running: npm ${npmArgs.join(' ')}\n`)
+  result = spawnSync('npm', npmArgs, {
     cwd: new URL('../android-twa/', import.meta.url),
     stdio: 'inherit',
     shell: false,
@@ -122,7 +136,7 @@ if (result.signal) {
 
 if (result.status !== 0) {
   console.error(`\nBubblewrap exited with code ${result.status}.`)
-  console.error('The actual Bubblewrap error should now be visible above this line.\n')
+  console.error('The actual Bubblewrap/npm error should now be visible above this line.\n')
   process.exit(result.status ?? 1)
 }
 

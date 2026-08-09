@@ -4,8 +4,8 @@ cd /d "%~dp0"
 title Senlie Budget - Android Builder
 
 echo.
-echo  Senlie Budget Android Builder
-echo  =============================
+echo  Senlie Budget Android Builder v0.4.1
+echo  ==================================
 echo.
 set /p SENLIE_APP_URL=Paste your deployed HTTPS Senlie Budget URL: 
 
@@ -24,7 +24,7 @@ if not exist node_modules (
 
 if not exist android-twa\twa-manifest.json (
   echo.
-  echo Creating Android project from the live PWA...
+  echo Checking PWA and creating Android project...
   call npm run android:init -- "%SENLIE_APP_URL%" || goto :fail
 )
 
@@ -34,7 +34,9 @@ cd android-twa
 call npx --yes --package @bubblewrap/cli@1.24.1 bubblewrap build || goto :fail2
 
 echo.
-echo Done. Check the android-twa folder for app-release-signed.apk / app-release-bundle.aab.
+echo Done.
+echo APK: android-twa\app-release-signed.apk
+echo AAB: android-twa\app-release-bundle.aab
 echo.
 pause
 exit /b 0
@@ -43,6 +45,7 @@ exit /b 0
 cd ..
 :fail
 echo.
-echo Android build failed. Read ANDROID_PWA_GUIDE.md for the common setup issues.
+echo Android build stopped. The useful error should be printed ABOVE this line.
+echo See ANDROID_PWA_GUIDE.md if it mentions Java, Android SDK, signing, or Digital Asset Links.
 pause
 exit /b 1

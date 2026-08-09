@@ -48,3 +48,9 @@ See `SUPABASE_AUTH_SETUP.md`.
 ## Deploying to Vercel
 
 See `VERCEL_DEPLOY.md`. This build uses Vercel's native Next.js deployment and requires no custom output directory or standalone server.
+
+## PWA / Android
+
+Senlie Budget v0.4.0 is installable as a Progressive Web App on Android. Deploy it over HTTPS, open it in Chrome, and choose **Install app** / **Add to Home screen**. An install action also appears under **Settings → App** when the browser exposes the native install prompt.
+
+For an Android APK/AAB, use the included Trusted Web Activity workflow after the production URL is live. See `ANDROID_PWA_GUIDE.md` or double-click `BUILD_ANDROID_APK.bat` on Windows.

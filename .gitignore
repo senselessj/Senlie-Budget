@@ -54,3 +54,16 @@ server.log
 /skills/
 # generated local artifacts
 /generated/
+
+# Android TWA generated build output / signing material
+/android-twa/.gradle/
+/android-twa/app/
+/android-twa/gradle/
+/android-twa/gradlew
+/android-twa/gradlew.bat
+/android-twa/build.gradle
+/android-twa/settings.gradle
+/android-twa/gradle.properties
+/android-twa/twa-manifest.json
+/android-twa/*.jks
+/android-twa/*.keystore

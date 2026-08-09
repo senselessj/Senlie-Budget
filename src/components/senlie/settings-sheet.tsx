@@ -33,6 +33,7 @@ import { useAuth } from '@/lib/auth-store'
 import { useHomeSummary, useAccountsAndCategories, useRecurring, useHaptic } from '@/hooks/use-senlie-data'
 import { useT } from '@/hooks/use-t'
 import { SenlieSymbol } from '@/components/senlie/senlie-symbol'
+import { InstallAppRow } from '@/components/pwa/install-app-row'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -313,6 +314,12 @@ function SettingsRoot() {
         />
       </SettingsGroup>
 
+      {/* App */}
+      <SectionLabel>App</SectionLabel>
+      <SettingsGroup>
+        <InstallAppRow />
+      </SettingsGroup>
+
       {/* Data */}
       <SectionLabel>Data</SectionLabel>
       <SettingsGroup>
@@ -361,7 +368,7 @@ function SettingsRoot() {
           <SenlieSymbol size={36} className="text-foreground" />
           <div className="text-[16px] font-semibold tracking-tight">Senlie Budget</div>
           <div className="text-[12px] text-muted-foreground">by Senlie Technologies</div>
-          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 1.0.0</div>
+          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 0.4.0</div>
           <div className="text-[11px] text-muted-foreground/70">Your money, clearly.</div>
         </div>
         <SettingsRow

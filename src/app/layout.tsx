@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ReactQueryProvider } from "@/components/react-query-provider";
+import { PwaRegister } from "@/components/pwa/pwa-register";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,8 +31,20 @@ export const metadata: Metadata = {
     "expense tracker",
   ],
   authors: [{ name: "Senlie Technologies" }],
+  manifest: "/manifest.webmanifest",
+  applicationName: "Senlie Budget",
+  appleWebApp: {
+    capable: true,
+    title: "Senlie Budget",
+    statusBarStyle: "default",
+  },
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: "/icon-192.png",
   },
   openGraph: {
     title: "Senlie Budget",
@@ -69,6 +82,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ReactQueryProvider>
+            <PwaRegister />
             {children}
             <Toaster />
             <Sonner />

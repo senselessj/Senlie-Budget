@@ -1,0 +1,216 @@
+// Senlie Budget — Supabase/Postgres runtime schema
+// The database tables themselves are created once with SUPABASE_SETUP.sql.
+// Prisma is runtime-only here; no db push/migrate command is required.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique
+  name          String
+  avatarColor   String   @default("#5965F3")
+  currencyCode  String   @default("DOP")
+  currencySymbol String  @default("RD$")
+  timezone      String   @default("America/Santo_Domingo")
+  monthStartDay Int      @default(1)
+  hideBalances  Boolean  @default(false)
+  paySchedule   String   @default("biweekly")
+  language      String   @default("en")
+  onboardingComplete Boolean @default(false) @map("onboarding_complete")
+  termsAccepted Boolean @default(false) @map("terms_accepted")
+  termsVersion  String?  @map("terms_version")
+  termsAcceptedAt DateTime? @map("terms_accepted_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  accounts         Account[]
+  categories       Category[]
+  transactions     Transaction[]
+  budgets          Budget[]
+  recurringRules   RecurringRule[]
+  goals            Goal[]
+  merchants        Merchant[]
+
+  @@map("users")
+}
+
+model Account {
+  id              String   @id @default(cuid())
+  userId          String   @db.Uuid @map("user_id")
+  name            String
+  type            String
+  currency        String   @default("DOP")
+  openingBalance  Float    @default(0) @map("opening_balance")
+  currentBalance  Float    @default(0) @map("current_balance")
+  institution     String?
+  color           String   @default("#5965F3")
+  icon            String   @default("wallet")
+  isArchived      Boolean  @default(false) @map("is_archived")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  recurringRules RecurringRule[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid @map("user_id")
+  parentId  String?  @map("parent_id")
+  name      String
+  icon      String   @default("tag")
+  type      String   @default("expense")
+  color     String   @default("#5965F3")
+  isSystem  Boolean  @default(false) @map("is_system")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  budgetCategories BudgetCategory[]
+  recurringRules RecurringRule[]
+
+  @@index([userId])
+  @@map("categories")
+}
+
+model Merchant {
+  id                 String   @id @default(cuid())
+  userId             String   @db.Uuid @map("user_id")
+  name               String
+  defaultCategoryId  String?  @map("default_category_id")
+  logo               String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("merchants")
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  userId            String   @db.Uuid @map("user_id")
+  accountId         String   @map("account_id")
+  type              String
+  amount            Float
+  currency          String   @default("DOP")
+  merchantId        String?  @map("merchant_id")
+  merchantName      String?  @map("merchant_name")
+  categoryId        String?  @map("category_id")
+  date              DateTime
+  description       String?
+  notes             String?
+  status            String   @default("posted")
+  recurringRuleId   String?  @map("recurring_rule_id")
+  transferGroupId   String?  @map("transfer_group_id")
+  paymentMethod     String?  @map("payment_method")
+  tags              String?
+  excludeFromBudget Boolean  @default(false) @map("exclude_from_budget")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account         Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category        Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurringRule   RecurringRule? @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([date])
+  @@index([type])
+  @@map("transactions")
+}
+
+model Budget {
+  id               String   @id @default(cuid())
+  userId           String   @db.Uuid @map("user_id")
+  month            Int
+  year             Int
+  incomeTarget     Float    @default(0) @map("income_target")
+  rolloverEnabled  Boolean  @default(false) @map("rollover_enabled")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetCategories BudgetCategory[]
+
+  @@unique([userId, month, year])
+  @@index([userId])
+  @@map("budgets")
+}
+
+model BudgetCategory {
+  id              String   @id @default(cuid())
+  budgetId        String   @map("budget_id")
+  categoryId      String   @map("category_id")
+  allocatedAmount Float    @map("allocated_amount")
+  rolloverAmount  Float    @default(0) @map("rollover_amount")
+  rolloverType    String   @default("monthly") @map("rollover_type")
+
+  budget          Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetId, categoryId])
+  @@map("budget_categories")
+}
+
+model RecurringRule {
+  id              String   @id @default(cuid())
+  userId          String   @db.Uuid @map("user_id")
+  transactionType String   @map("transaction_type")
+  amount          Float
+  frequency       String
+  startDate       DateTime @map("start_date")
+  nextDate        DateTime @map("next_date")
+  categoryId      String?  @map("category_id")
+  accountId       String?  @map("account_id")
+  merchantId      String?  @map("merchant_id")
+  merchantName    String?  @map("merchant_name")
+  description     String?
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  account       Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transactions  Transaction[]
+
+  @@index([userId])
+  @@index([nextDate])
+  @@map("recurring_rules")
+}
+
+model Goal {
+  id            String   @id @default(cuid())
+  userId        String   @db.Uuid @map("user_id")
+  name          String
+  targetAmount  Float    @map("target_amount")
+  currentAmount Float    @default(0) @map("current_amount")
+  targetDate    DateTime? @map("target_date")
+  accountId     String?  @map("account_id")
+  color         String   @default("#5965F3")
+  icon          String   @default("target")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("goals")
+}

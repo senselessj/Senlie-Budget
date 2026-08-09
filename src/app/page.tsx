@@ -1,0 +1,73 @@
+'use client'
+
+import * as React from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useSenlieUI } from '@/lib/store'
+import { useAuth } from '@/lib/auth-store'
+import { AuthScreen } from '@/components/senlie/auth-screen'
+import { OnboardingFlow } from '@/components/senlie/onboarding-flow'
+import { BottomTabBar } from '@/components/senlie/bottom-tab-bar'
+import { SenlieFooter } from '@/components/senlie/senlie-footer'
+import { HomeTab } from '@/components/senlie/tabs/home-tab'
+import { ActivityTab } from '@/components/senlie/tabs/activity-tab'
+import { BudgetTab } from '@/components/senlie/tabs/budget-tab'
+import { InsightsTab } from '@/components/senlie/tabs/insights-tab'
+import { AddTransactionSheet } from '@/components/senlie/add-transaction-sheet'
+import { TransactionDetailSheet } from '@/components/senlie/transaction-detail-sheet'
+import { SettingsSheet } from '@/components/senlie/settings-sheet'
+import { AddEntitySheet } from '@/components/senlie/add-entity-sheet'
+
+export default function Home() {
+  const activeTab = useSenlieUI((s) => s.activeTab)
+  const user = useAuth((s) => s.user)
+  const initialized = useAuth((s) => s.initialized)
+  const initialize = useAuth((s) => s.initialize)
+
+  // Restore the Supabase browser session before deciding whether to show
+  // authentication, onboarding, or the budget UI.
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
+  React.useEffect(() => { initialize().catch(() => {}) }, [initialize])
+
+  if (!mounted || !initialized) {
+    return <div className="min-h-screen bg-background" />
+  }
+
+  if (!user) {
+    return <AuthScreen />
+  }
+
+  if (!user.onboardingComplete) {
+    return <OnboardingFlow />
+  }
+
+  return (
+    <div className="relative flex min-h-screen flex-col bg-background">
+      <main className="flex-1 pb-32">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {activeTab === 'home' && <HomeTab />}
+            {activeTab === 'activity' && <ActivityTab />}
+            {activeTab === 'budget' && <BudgetTab />}
+            {activeTab === 'insights' && <InsightsTab />}
+          </motion.div>
+        </AnimatePresence>
+        <SenlieFooter />
+      </main>
+
+      <BottomTabBar />
+
+      {/* Sheets */}
+      <AddTransactionSheet />
+      <TransactionDetailSheet />
+      <SettingsSheet />
+      <AddEntitySheet />
+    </div>
+  )
+}

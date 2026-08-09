@@ -16,18 +16,34 @@ import { AddTransactionSheet } from '@/components/senlie/add-transaction-sheet'
 import { TransactionDetailSheet } from '@/components/senlie/transaction-detail-sheet'
 import { SettingsSheet } from '@/components/senlie/settings-sheet'
 import { AddEntitySheet } from '@/components/senlie/add-entity-sheet'
+import { AppNavigationGuard } from '@/components/pwa/app-navigation-guard'
 
 export default function Home() {
   const activeTab = useSenlieUI((s) => s.activeTab)
   const user = useAuth((s) => s.user)
   const initialized = useAuth((s) => s.initialized)
   const initialize = useAuth((s) => s.initialize)
+  const setLanguage = useSenlieUI((s) => s.setLanguage)
+  const language = useSenlieUI((s) => s.language)
 
   // Restore the Supabase browser session before deciding whether to show
   // authentication, onboarding, or the budget UI.
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
   React.useEffect(() => { initialize().catch(() => {}) }, [initialize])
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.lang = language
+    document.documentElement.dir = 'ltr'
+  }, [language])
+  React.useEffect(() => {
+    if (!user?.onboardingComplete) return
+    setLanguage(user.language)
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = user.language
+      document.documentElement.dir = 'ltr'
+    }
+  }, [user?.id, user?.onboardingComplete, user?.language, setLanguage])
 
   if (!mounted || !initialized) {
     return <div className="min-h-screen bg-background" />
@@ -42,8 +58,9 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background">
-      <main className="flex-1 pb-32">
+    <div className="relative flex min-h-[100dvh] flex-col bg-background">
+      <AppNavigationGuard />
+      <main className="flex-1 pb-32 pt-[env(safe-area-inset-top)]">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -63,9 +80,9 @@ export default function Home() {
 
       <BottomTabBar />
 
-      {/* Sheets */}
-      <AddTransactionSheet />
+      {/* Sheets — detail renders underneath the editor so Back can reveal it. */}
       <TransactionDetailSheet />
+      <AddTransactionSheet />
       <SettingsSheet />
       <AddEntitySheet />
     </div>

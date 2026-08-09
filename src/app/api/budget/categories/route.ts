@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUserEmail } from '@/lib/auth-server'
+import { localizedSystemCategoryName, type Language } from '@/lib/i18n'
 import { requireCategoryOwnership, requireAccountOwnership, requireGoalOwnership, requireRecurringOwnership, OwnershipError } from '@/lib/ownership'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +20,15 @@ export async function GET(req: NextRequest) {
       where: { userId: user.id, ...(type ? { type } : {}) },
       orderBy: { sortOrder: 'asc' },
     })
-    return NextResponse.json(categories)
+    const language: Language = user.language === 'es' ? 'es' : 'en'
+    return NextResponse.json(
+      categories.map((category) => ({
+        ...category,
+        name: category.isSystem
+          ? localizedSystemCategoryName(category.name, language)
+          : category.name,
+      }))
+    )
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

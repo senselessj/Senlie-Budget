@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { formatCompact, formatMoney, maskBalance } from '@/lib/currency'
 import type { InsightsSummary } from '@/lib/types'
+import { useT } from '@/hooks/use-t'
 
 type TimelinePoint = InsightsSummary['timeline'][number]
 
@@ -133,6 +134,7 @@ function CustomTooltip({
   senlieColor: string
   mutedColor: string
 }) {
+  const t = useT()
   if (!active || !payload || payload.length === 0) return null
 
   const thisMonth = payload.find((p) => p.dataKey === 'thisMonth')?.value ?? 0
@@ -154,7 +156,7 @@ function CustomTooltip({
       style={{ backgroundColor: bg, border: `1px solid ${border}` }}
     >
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Day {label}
+        {t('insights.day')} {label}
       </p>
       <div className="mt-1.5 space-y-1">
         <div className="flex items-center gap-2">
@@ -162,7 +164,7 @@ function CustomTooltip({
             className="inline-block h-2 w-2 rounded-full"
             style={{ backgroundColor: senlieColor }}
           />
-          <span className="text-[12px] text-muted-foreground">This month</span>
+          <span className="text-[12px] text-muted-foreground">{t('insights.thisMonth')}</span>
           <span className="ml-auto text-[12px] font-semibold tnum text-foreground">
             {fmt(thisMonth)}
           </span>
@@ -172,7 +174,7 @@ function CustomTooltip({
             className="inline-block h-2 w-2 rounded-full"
             style={{ backgroundColor: mutedColor, opacity: 0.4 }}
           />
-          <span className="text-[12px] text-muted-foreground">Last month</span>
+          <span className="text-[12px] text-muted-foreground">{t('insights.lastMonth')}</span>
           <span className="ml-auto text-[12px] font-semibold tnum text-foreground">
             {fmt(lastMonth)}
           </span>
@@ -183,6 +185,7 @@ function CustomTooltip({
 }
 
 export function TimelineLegend() {
+  const t = useT()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const senlieColor = isDark ? '#6E7BFF' : '#5965F3'
@@ -194,14 +197,14 @@ export function TimelineLegend() {
           className="inline-block h-2 w-2 rounded-full"
           style={{ backgroundColor: senlieColor }}
         />
-        <span className="text-[12px] text-muted-foreground">This month</span>
+        <span className="text-[12px] text-muted-foreground">{t('insights.thisMonth')}</span>
       </span>
       <span className="flex items-center gap-1.5">
         <span
           className="inline-block h-2 w-2 rounded-full"
           style={{ backgroundColor: mutedColor, opacity: 0.4 }}
         />
-        <span className="text-[12px] text-muted-foreground">Last month</span>
+        <span className="text-[12px] text-muted-foreground">{t('insights.lastMonth')}</span>
       </span>
     </div>
   )

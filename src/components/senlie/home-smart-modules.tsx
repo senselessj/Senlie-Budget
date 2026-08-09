@@ -135,10 +135,14 @@ function BudgetWarningCard({
   symbol: string
   hideBalances: boolean
 }) {
-  const title = `${warning.category} is getting close.`
-  const body = `${hideBalances ? maskBalance(symbol) : formatMoney(warning.amount, { symbol, decimalPlaces: 0 })} left for the next ${warning.daysLeft} days.`
+  const t = useT()
+  const body = t('home.budgetWarning', {
+    category: warning.category,
+    amount: hideBalances ? maskBalance(symbol) : formatMoney(warning.amount, { symbol, decimalPlaces: 0 }),
+    days: warning.daysLeft,
+  })
   return (
-    <InsightCardShell icon={TriangleAlert} tint="var(--warning)" title={title} delay={0.1}>
+    <InsightCardShell icon={TriangleAlert} tint="var(--warning)" title={warning.category} delay={0.1}>
       <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">{body}</p>
     </InsightCardShell>
   )
@@ -152,6 +156,7 @@ function PositiveInsightCard({
 }: {
   insight: NonNullable<SmartModules['positiveInsight']>
 }) {
+  const t = useT()
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -167,7 +172,7 @@ function PositiveInsightCard({
         >
           <Sparkles size={15} strokeWidth={2.4} />
         </div>
-        <h3 className="text-[15px] font-semibold tracking-tight text-foreground">Nice.</h3>
+        <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{t('home.nice')}</h3>
       </div>
       <p className="mt-1.5 pl-9 text-[13px] leading-snug text-muted-foreground">
         {insight.message}

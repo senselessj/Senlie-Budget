@@ -14,22 +14,22 @@ import { TODAY } from '@/lib/finance-utils'
 
 // Relative-time helper. We anchor on the demo "today" (Aug 8, 2026 18:42 AST)
 // so the demo always feels consistent regardless of the real wall clock.
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: (key: string, params?: Record<string, string | number>) => string): string {
   const then = new Date(iso).getTime()
   const now = TODAY.getTime()
   const diffMs = now - then
-  if (diffMs < 0) return 'just now'
+  if (diffMs < 0) return t('activity.justNow')
   const min = Math.floor(diffMs / 60000)
-  if (min < 1) return 'just now'
-  if (min < 60) return `${min}m ago`
+  if (min < 1) return t('activity.justNow')
+  if (min < 60) return t('activity.minutesAgo', { count: min })
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
+  if (hr < 24) return t('activity.hoursAgo', { count: hr })
   const day = Math.floor(hr / 24)
-  if (day === 1) return 'yesterday'
-  if (day < 7) return `${day}d ago`
+  if (day === 1) return t('activity.yesterday').toLowerCase()
+  if (day < 7) return t('activity.daysAgo', { count: day })
   const wk = Math.floor(day / 7)
-  if (wk === 1) return 'last week'
-  return `${wk}w ago`
+  if (wk === 1) return t('activity.lastWeek')
+  return t('activity.weeksAgo', { count: wk })
 }
 
 export function HomeRecentActivity({
@@ -45,6 +45,7 @@ export function HomeRecentActivity({
 }) {
   const setSelectedTransactionId = useSenlieUI((s) => s.setSelectedTransactionId)
   const haptic = useHaptic()
+  const t = useT()
 
   const rows = transactions.slice(0, 5)
 
@@ -53,7 +54,7 @@ export function HomeRecentActivity({
       <section className="space-y-3">
         <Header onSeeAll={onSeeAll} />
         <div className="bg-card shadow-card rounded-[18px] p-6 text-center">
-          <p className="text-[14px] text-muted-foreground">No transactions yet this month.</p>
+          <p className="text-[14px] text-muted-foreground">{t('home.noTransactions')}</p>
         </div>
       </section>
     )
@@ -64,9 +65,9 @@ export function HomeRecentActivity({
       <Header onSeeAll={onSeeAll} />
       <div className="bg-card shadow-card divide-y divide-border overflow-hidden rounded-[20px]">
         {rows.map((tx, i) => {
-          const merchant = tx.merchantName || tx.description || 'Transaction'
-          const categoryName = tx.category?.name ?? 'Other'
-          const relTime = relativeTime(tx.date)
+          const merchant = tx.merchantName || tx.description || t('activity.transaction')
+          const categoryName = tx.category?.name ?? t('activity.other')
+          const relTime = relativeTime(tx.date, t)
 
           let amountText: React.ReactNode
           if (hideBalances) {

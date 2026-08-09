@@ -4,8 +4,7 @@ import * as React from 'react'
 import { motion } from 'framer-motion'
 import { CalendarClock } from 'lucide-react'
 import { formatMoney, maskBalance } from '@/lib/currency'
-import { monthShort } from '@/lib/finance-utils'
-import { useT } from '@/hooks/use-t'
+import { useT, useLanguage } from '@/hooks/use-t'
 
 // Compact footer card showing the next upcoming payday.
 export function HomeNextPayday({
@@ -20,8 +19,9 @@ export function HomeNextPayday({
   hideBalances: boolean
 }) {
   const t = useT()
+  const { locale } = useLanguage()
   const d = new Date(nextPayDate)
-  const label = `${monthShort(d.getMonth() + 1)} ${d.getDate()}`
+  const label = d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 
   return (
     <motion.div

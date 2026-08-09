@@ -141,14 +141,14 @@ export function ActivityFilterSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="mx-auto max-h-[90vh] max-w-md rounded-t-[24px]">
+      <DrawerContent className="senlie-sheet mx-auto max-w-md rounded-t-[24px]">
         <DrawerHeader className="pb-0">
           <DrawerTitle className="sr-only">{t('filter.titleSr')}</DrawerTitle>
           <DrawerDescription className="sr-only">
             {t('filter.descSr')}
           </DrawerDescription>
         </DrawerHeader>
-        <div className="overflow-y-auto px-5 pb-8 pt-2">
+        <div className="senlie-sheet-scroll px-5 pb-[max(env(safe-area-inset-bottom),24px)] pt-2">
           {/* Title row */}
           <div className="flex items-center justify-between pb-4 pt-1">
             <h2 className="text-[20px] font-semibold tracking-tight">{t('filter.title')}</h2>

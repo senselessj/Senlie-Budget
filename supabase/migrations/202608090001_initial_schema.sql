@@ -234,6 +234,57 @@ from auth.users au
 where au.email is not null
 on conflict (id) do nothing;
 
+
+-- ── Self-heal a missing profile for the currently authenticated user ───
+-- The auth.users trigger above is the primary path. This RPC is a safe
+-- fallback for accounts that were created before the trigger existed or
+-- while an older Senlie schema was installed. It can only repair the row
+-- belonging to auth.uid(); callers cannot choose another user id.
+create or replace function public.senlie_ensure_profile()
+returns public.users
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  auth_email text;
+  auth_name text;
+  profile_row public.users;
+begin
+  if current_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select
+    au.email,
+    coalesce(
+      nullif(au.raw_user_meta_data ->> 'name', ''),
+      split_part(au.email, '@', 1),
+      'Friend'
+    )
+  into auth_email, auth_name
+  from auth.users au
+  where au.id = current_user_id;
+
+  if auth_email is null then
+    raise exception 'Authenticated Senlie user has no email address';
+  end if;
+
+  insert into public.users (id, email, name)
+  values (current_user_id, auth_email, auth_name)
+  on conflict (id) do update
+    set email = excluded.email
+  returning * into profile_row;
+
+  return profile_row;
+end;
+$$;
+
+revoke all on function public.senlie_ensure_profile() from public;
+revoke all on function public.senlie_ensure_profile() from anon;
+grant execute on function public.senlie_ensure_profile() to authenticated;
+
 -- ── Row Level Security ────────────────────────────────────────────────
 alter table public.users enable row level security;
 alter table public.accounts enable row level security;

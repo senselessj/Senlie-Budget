@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { AnimatedNumber } from '@/components/senlie/animated-number'
 import { formatMoney, maskBalance } from '@/lib/currency'
-import { monthName } from '@/lib/finance-utils'
 import { useT } from '@/hooks/use-t'
 import type { InsightsSummary } from '@/lib/types'
 
@@ -31,7 +30,8 @@ export function InsightsHeroCard({
   const t = useT()
   const isDown = data.heroDirection === 'down'
   const pct = Math.abs(data.heroDelta)
-  const lastMonthName = monthName(data.month - 1)
+  const lastMonth = data.month === 1 ? 12 : data.month - 1
+  const lastMonthName = t(`month.${lastMonth}`)
   const tint = isDown ? 'var(--positive)' : 'var(--warning)'
 
   // Headline — different framing depending on direction

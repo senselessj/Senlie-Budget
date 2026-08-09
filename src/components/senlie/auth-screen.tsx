@@ -540,12 +540,13 @@ function AuthError({ error }: { error: string | null }) {
 }
 
 function LanguageToggle() {
+  const t = useT()
   const { language, setLanguage } = useLanguage()
   const [open, setOpen] = React.useState(false)
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" aria-label="Toggle language" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-[11px] font-bold text-foreground shadow-card transition-transform active:scale-95">
+        <button type="button" aria-label={t('accessibility.toggleLanguage')} className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-[11px] font-bold text-foreground shadow-card transition-transform active:scale-95">
           {language.toUpperCase().slice(0, 2)}
         </button>
       </PopoverTrigger>

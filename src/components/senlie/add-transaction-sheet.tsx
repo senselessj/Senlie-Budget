@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useT } from '@/hooks/use-t'
+import { useT, useLanguage } from '@/hooks/use-t'
 
 type TxType = 'expense' | 'income' | 'transfer'
 
@@ -25,6 +25,7 @@ export function AddTransactionSheet() {
   const setEditingTransactionId = useSenlieUI((s) => s.setEditingTransactionId)
   const haptic = useHaptic()
   const t = useT()
+  const { locale } = useLanguage()
   const { data: home } = useHomeSummary()
   const symbol = home?.user.currencySymbol ?? 'RD$'
 
@@ -37,7 +38,7 @@ export function AddTransactionSheet() {
   const [categoryId, setCategoryId] = React.useState<string | null>(null)
   const [accountId, setAccountId] = React.useState<string | null>(null)
   const [toAccountId, setToAccountId] = React.useState<string | null>(null)
-  const [date, setDate] = React.useState<Date>(new Date('2026-08-08T18:42:00-04:00'))
+  const [date, setDate] = React.useState<Date>(() => new Date())
   const [note, setNote] = React.useState('')
   const [saving, setSaving] = React.useState(false)
 
@@ -54,7 +55,7 @@ export function AddTransactionSheet() {
       setCategoryId(null)
       setAccountId(null)
       setToAccountId(null)
-      setDate(new Date('2026-08-08T18:42:00-04:00'))
+      setDate(new Date())
       setNote('')
       setSaving(false)
     }
@@ -212,7 +213,7 @@ export function AddTransactionSheet() {
 
   return (
     <Drawer open={sheetOpen} onOpenChange={(o) => { if (!o) closeSheet() }}>
-      <DrawerContent className="max-h-[94vh]">
+      <DrawerContent className="senlie-sheet">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center text-[17px] font-semibold tracking-tight">
             {isEditing ? t('add.edit') : t('add.title')}
@@ -262,7 +263,7 @@ export function AddTransactionSheet() {
           </div>
         </div>
 
-        <ScrollArea className="max-h-[60vh]" type="always">
+        <ScrollArea className="min-h-0 flex-1" type="always">
           <div className="px-5 pb-4">
             {/* Amount hero */}
             <div className="py-6 text-center">
@@ -520,9 +521,9 @@ export function AddTransactionSheet() {
                       <CalendarIcon size={18} />
                     </div>
                     <div className="flex-1">
-                      <div className="text-[12px] text-muted-foreground">Date</div>
+                      <div className="text-[12px] text-muted-foreground">{t('add.date')}</div>
                       <div className="text-[15px] font-medium">
-                        {date.toLocaleDateString('en-US', {
+                        {date.toLocaleDateString(locale, {
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric',
@@ -573,7 +574,7 @@ export function AddTransactionSheet() {
           </div>
         </ScrollArea>
 
-        <DrawerFooter className="px-5 pb-[max(env(safe-area-inset-bottom),16px)] pt-2">
+        <DrawerFooter className="senlie-sheet-footer px-5 pt-2">
           <button
             onClick={handleSave}
             disabled={!canSave || saving}

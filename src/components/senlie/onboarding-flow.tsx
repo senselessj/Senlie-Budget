@@ -85,6 +85,7 @@ const ACCOUNT_TYPE_CHIPS: { key: AccountType; labelKey: string }[] = [
 export function OnboardingFlow() {
   const haptic = useHaptic()
   const t = useT()
+  const { language } = useLanguage()
   const completeOnboarding = useAuth((s) => s.completeOnboarding)
   const termsAlreadyAccepted = useAuth((s) => Boolean(s.user?.termsAccepted))
 
@@ -99,7 +100,7 @@ export function OnboardingFlow() {
   const [customPayments, setCustomPayments] = React.useState<CustomPayment[]>([])
   const [monthlyIncome, setMonthlyIncome] = React.useState('')
   const [accounts, setAccounts] = React.useState<OnboardingAccount[]>([
-    { id: 'acc-1', name: 'Main Account', type: 'checking', balance: '0' },
+    { id: 'acc-1', name: 'Main Account', type: 'checking', balance: '' },
   ])
   const [submitting, setSubmitting] = React.useState(false)
   const [legalDoc, setLegalDoc] = React.useState<'terms' | 'privacy' | null>(null)
@@ -133,7 +134,14 @@ export function OnboardingFlow() {
       return !isNaN(n) && n >= 0
     }
     if (step === 5) {
-      return accounts.length > 0 && accounts.every((a) => a.name.trim().length > 0)
+      return (
+        accounts.length > 0 &&
+        accounts.every((a) =>
+          a.name.trim().length > 0 &&
+          a.balance.trim().length > 0 &&
+          Number.isFinite(Number(a.balance))
+        )
+      )
     }
     return true
   }
@@ -215,6 +223,7 @@ export function OnboardingFlow() {
             color: '#5965F3',
           })),
           categories: [],
+          language,
         }),
       })
       if (!res.ok) {
@@ -222,7 +231,7 @@ export function OnboardingFlow() {
         throw new Error(err?.error || `Onboarding failed (${res.status})`)
       }
       haptic('success')
-      completeOnboarding()
+      completeOnboarding(language)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('onb.somethingWrong')
       haptic('warning')
@@ -239,7 +248,7 @@ export function OnboardingFlow() {
     haptic('light')
     setAccounts((arr) => [
       ...arr,
-      { id: `acc-${Date.now()}`, name: '', type: 'checking', balance: '0' },
+      { id: `acc-${Date.now()}`, name: '', type: 'checking', balance: '' },
     ])
   }
   const removeAccount = (id: string) => {
@@ -251,7 +260,7 @@ export function OnboardingFlow() {
   const isLastStep = step === TOTAL_STEPS
 
   return (
-    <div className="flex min-h-screen flex-col bg-background px-5">
+    <div className="flex min-h-[100dvh] flex-col bg-background px-5">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         {/* ── Top bar: back + progress dots ──────────────────────────── */}
         <div className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] pb-2">
@@ -374,6 +383,7 @@ export function OnboardingFlow() {
                   monthlyIncome={monthlyIncome}
                   symbol={symbol}
                   accountCount={accounts.length}
+                  startingBalance={accounts.reduce((sum, account) => sum + (Number(account.balance) || 0), 0)}
                 />
               )}
             </motion.div>
@@ -933,6 +943,11 @@ function AccountsStep({
   onRemove: (id: string) => void
 }) {
   const t = useT()
+  const totalStartingBalance = accounts.reduce(
+    (sum, account) => sum + (Number(account.balance) || 0),
+    0
+  )
+
   return (
     <StepShell
       eyebrow={t('onb.step4of4')}
@@ -1003,21 +1018,29 @@ function AccountsStep({
                   })}
                 </div>
 
-                {/* Balance */}
-                <div className="relative mt-3">
-                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-semibold text-muted-foreground">
-                    {symbol}
-                  </span>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    value={a.balance}
-                    onChange={(e) =>
-                      onUpdate(a.id, { balance: e.target.value })
-                    }
-                    placeholder="0"
-                    className="h-11 rounded-[12px] border-0 bg-muted pl-[calc(14px+1ch+6px)] pr-3 text-[15px] font-semibold tnum"
-                  />
+                {/* Current balance / starting money */}
+                <div className="mt-3">
+                  <div className="text-[12px] font-medium text-muted-foreground">
+                    {t('onb.currentBalance')}
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground/75">
+                    {t('onb.currentBalanceHint')}
+                  </p>
+                  <div className="relative mt-2">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-semibold text-muted-foreground">
+                      {symbol}
+                    </span>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={a.balance}
+                      onChange={(e) =>
+                        onUpdate(a.id, { balance: e.target.value })
+                      }
+                      placeholder="0.00"
+                      className="h-11 rounded-[12px] border-0 bg-muted pl-[calc(14px+1ch+6px)] pr-3 text-[15px] font-semibold tnum"
+                    />
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1032,6 +1055,16 @@ function AccountsStep({
           <Plus size={16} />
           {t('onb.addAnotherAccount')}
         </button>
+
+        <div className="flex items-center justify-between rounded-[16px] bg-[var(--senlie-soft)] px-4 py-3">
+          <div className="min-w-0 pr-4">
+            <div className="text-[13px] font-semibold text-foreground">{t('onb.startingMoney')}</div>
+            <div className="text-[11px] text-muted-foreground">{t('onb.startingMoneyDesc')}</div>
+          </div>
+          <div className="shrink-0 text-[18px] font-semibold tnum text-[var(--senlie)]">
+            {formatMoney(totalStartingBalance, { symbol, decimalPlaces: 0 })}
+          </div>
+        </div>
       </div>
     </StepShell>
   )
@@ -1048,6 +1081,7 @@ function ReadyStep({
   monthlyIncome,
   symbol,
   accountCount,
+  startingBalance,
 }: {
   currencyCode: CurrencyCode
   paySchedule: PaySchedule
@@ -1055,6 +1089,7 @@ function ReadyStep({
   monthlyIncome: string
   symbol: string
   accountCount: number
+  startingBalance: number
 }) {
   const t = useT()
   const isCustom = paySchedule === 'custom'
@@ -1083,6 +1118,10 @@ function ReadyStep({
         }))
       : []),
     { label: t('onb.rowMonthlyIncome'), value: incomeLabel },
+    {
+      label: t('onb.rowStartingMoney'),
+      value: formatMoney(startingBalance, { symbol, decimalPlaces: 0 }),
+    },
     {
       label: t('onb.rowAccounts'),
       value: t('onb.accountCount', { count: accountCount, plural: accountCount === 1 ? '' : 's' }),
@@ -1174,6 +1213,7 @@ function StepShell({
 // Language toggle — top-right of onboarding
 // ---------------------------------------------------------------------------
 function OnboardingLanguageToggle() {
+  const t = useT()
   const { language, setLanguage } = useLanguage()
   const [open, setOpen] = React.useState(false)
 
@@ -1182,7 +1222,7 @@ function OnboardingLanguageToggle() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Toggle language"
+          aria-label={t('accessibility.toggleLanguage')}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-[11px] font-bold text-foreground shadow-card transition-transform active:scale-95"
         >
           {language.toUpperCase().slice(0, 2)}

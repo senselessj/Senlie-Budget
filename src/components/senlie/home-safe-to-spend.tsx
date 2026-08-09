@@ -28,8 +28,12 @@ export function HomeSafeToSpend({
 
   const t = useT()
   const explanation = hideBalances
-    ? `You have hidden balances. Reveal them to see the exact amount. ${daysLeft} ${t('home.days')} remain.`
-    : `You currently have ${formatMoney(total, { symbol, decimalPlaces: 0 })} ${t('home.availableFor')} ${t('home.days')}. ${daysLeft} ${t('home.days')} remain. \u2248 ${formatMoney(perDay, { symbol, decimalPlaces: 0 })}${t('home.perDay')}.`
+    ? t('home.hiddenBalancesDetail', { days: daysLeft })
+    : t('home.safeDetail', {
+        total: formatMoney(total, { symbol, decimalPlaces: 0 }),
+        days: daysLeft,
+        perDay: formatMoney(perDay, { symbol, decimalPlaces: 0 }),
+      })
 
   return (
     <motion.section
@@ -51,7 +55,7 @@ export function HomeSafeToSpend({
         </div>
         <button
           type="button"
-          aria-label="What is safe to spend?"
+          aria-label={t('home.whatIsSafe')}
           onClick={() => {
             haptic('light')
             setOpen((v) => !v)
@@ -74,13 +78,13 @@ export function HomeSafeToSpend({
             className="text-[32px] font-semibold tracking-tight tnum text-foreground"
           />
         )}
-        <span className="text-[15px] font-medium text-muted-foreground">/ day</span>
+        <span className="text-[15px] font-medium text-muted-foreground">{t('home.perDay')}</span>
       </div>
 
       <p className="mt-1 text-[13px] text-muted-foreground">
         {hideBalances
-          ? `${maskBalance(symbol)} available for ${daysLeft} days`
-          : `${formatMoney(total, { symbol, decimalPlaces: 0 })} available for ${daysLeft} days`}
+          ? `${maskBalance(symbol)} ${t('home.availableFor')} ${daysLeft} ${t('home.days')}`
+          : `${formatMoney(total, { symbol, decimalPlaces: 0 })} ${t('home.availableFor')} ${daysLeft} ${t('home.days')}`}
       </p>
 
       <AnimatePresence>

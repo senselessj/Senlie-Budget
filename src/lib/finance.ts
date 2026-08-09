@@ -6,6 +6,7 @@
 // `@/lib/finance-utils` instead.
 
 import { db } from '@/lib/db'
+import { translate, localeForLanguage, localizedSystemCategoryName, type Language } from '@/lib/i18n'
 import { getCurrentUserEmail } from '@/lib/auth-server'
 import {
   TODAY,
@@ -38,6 +39,15 @@ export {
   lucideIcon,
 }
 
+function userLanguage(value: unknown): Language {
+  return value === 'es' ? 'es' : 'en'
+}
+
+function numberFormatter(language: Language) {
+  const locale = localeForLanguage(language)
+  return (value: number) => Math.round(value).toLocaleString(locale)
+}
+
 // ----------------------------------------------------------------
 // HOME
 // ----------------------------------------------------------------
@@ -46,6 +56,10 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     where: { email: await getCurrentUserEmail() },
   })
   if (!user) throw new Error('No Senlie profile found.')
+
+  const language = userLanguage(user.language)
+  const tr = (key: string, params?: Record<string, string | number>) => translate(language, key, params)
+  const fmt = numberFormatter(language)
 
   const month = TODAY.getMonth() + 1
   const year = TODAY.getFullYear()
@@ -128,7 +142,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     category: t.category
       ? {
           id: t.category.id,
-          name: t.category.name,
+          name: t.category.isSystem ? localizedSystemCategoryName(t.category.name, language) : t.category.name,
           icon: t.category.icon,
           color: t.category.color,
           type: t.category.type as 'expense' | 'income' | 'transfer',
@@ -166,9 +180,9 @@ export async function getHomeSummary(): Promise<HomeSummary> {
   })).slice(0, 3).map((r) => {
     const diffDays = Math.ceil((r.nextDate.getTime() - TODAY.getTime()) / (24 * 60 * 60 * 1000))
     return {
-      name: r.merchantName || r.description || 'Recurring',
+      name: r.merchantName || r.description || tr('server.recurring'),
       amount: r.amount,
-      dueIn: diffDays === 0 ? 'Today' : diffDays === 1 ? 'Due tomorrow' : `In ${diffDays} days`,
+      dueIn: diffDays === 0 ? tr('server.today') : diffDays === 1 ? tr('server.dueTomorrow') : tr('server.inDays', { days: diffDays }),
       date: r.nextDate.toISOString(),
     }
   })
@@ -193,10 +207,10 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     percent: Math.abs(paceDelta),
     message:
       paceDelta < 0
-        ? `You're spending ${Math.abs(paceDelta)}% slower than last month.`
+        ? tr('home.spendingSlower', { percent: Math.abs(paceDelta) })
         : paceDelta > 0
-          ? `You're spending ${paceDelta}% faster than last month.`
-          : `Your spending pace matches last month.`,
+          ? tr('home.spendingFaster', { percent: paceDelta })
+          : tr('home.spendingSame'),
   }
 
   // 3) Budget warning — category closest to limit with > 75% used and significant remaining
@@ -212,7 +226,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
       const remaining = limit - catSpent
       if (!budgetWarning || remaining < budgetWarning.amount) {
         budgetWarning = {
-          category: bc.category.name,
+          category: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name,
           amount: remaining,
           daysLeft,
         }
@@ -234,12 +248,12 @@ export async function getHomeSummary(): Promise<HomeSummary> {
   const byCatLastMonth: Record<string, { name: string; total: number }> = {}
   for (const t of expenses) {
     if (!t.categoryId) continue
-    byCatThisMonth[t.categoryId] ??= { name: t.category?.name ?? 'Other', total: 0 }
+    byCatThisMonth[t.categoryId] ??= { name: t.category ? (t.category.isSystem ? localizedSystemCategoryName(t.category.name, language) : t.category.name) : tr('activity.other'), total: 0 }
     byCatThisMonth[t.categoryId].total += t.amount
   }
   for (const t of lastMonthAllTx) {
     if (!t.categoryId) continue
-    byCatLastMonth[t.categoryId] ??= { name: t.category?.name ?? 'Other', total: 0 }
+    byCatLastMonth[t.categoryId] ??= { name: t.category ? (t.category.isSystem ? localizedSystemCategoryName(t.category.name, language) : t.category.name) : tr('activity.other'), total: 0 }
     byCatLastMonth[t.categoryId].total += t.amount
   }
   let biggestDrop = { category: '', amount: 0 }
@@ -254,7 +268,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     positiveInsight = {
       category: biggestDrop.category,
       amount: biggestDrop.amount,
-      message: `You spent ${Math.round(biggestDrop.amount).toLocaleString()} less on ${biggestDrop.category} this month.`,
+      message: tr('insight.lessThisMonth', { amount: fmt(biggestDrop.amount), category: biggestDrop.category }),
     }
   }
 
@@ -350,6 +364,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
 export async function getBudgetSummary(): Promise<BudgetSummary> {
   const user = await db.user.findFirst({ where: { email: await getCurrentUserEmail() } })
   if (!user) throw new Error('No user.')
+  const language = userLanguage(user.language)
 
   const month = TODAY.getMonth() + 1
   const year = TODAY.getFullYear()
@@ -396,7 +411,7 @@ export async function getBudgetSummary(): Promise<BudgetSummary> {
       return {
         id: bc.id,
         categoryId: bc.categoryId,
-        name: bc.category.name,
+        name: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name,
         icon: bc.category.icon,
         color: bc.category.color,
         allocated: bc.allocatedAmount,
@@ -440,6 +455,9 @@ export async function getActivity(
 ): Promise<ActivityGroup[]> {
   const user = await db.user.findFirst({ where: { email: await getCurrentUserEmail() } })
   if (!user) throw new Error('No user.')
+  const language = userLanguage(user.language)
+  const tr = (key: string, params?: Record<string, string | number>) => translate(language, key, params)
+  const locale = localeForLanguage(language)
 
   const where: any = { userId: user.id }
   if (filter !== 'all') where.type = filter
@@ -506,10 +524,10 @@ export async function getActivity(
       const yesterday = new Date(today.getTime() - 86400000)
       const dOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate())
       let label: string
-      if (dOnly.getTime() === today.getTime()) label = 'Today'
-      else if (dOnly.getTime() === yesterday.getTime()) label = 'Yesterday'
+      if (dOnly.getTime() === today.getTime()) label = tr('activity.today')
+      else if (dOnly.getTime() === yesterday.getTime()) label = tr('activity.yesterday')
       else
-        label = d.toLocaleDateString('en-US', {
+        label = d.toLocaleDateString(locale, {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -527,6 +545,9 @@ export async function getActivity(
 export async function getInsights(): Promise<InsightsSummary> {
   const user = await db.user.findFirst({ where: { email: await getCurrentUserEmail() } })
   if (!user) throw new Error('No user.')
+  const language = userLanguage(user.language)
+  const tr = (key: string, params?: Record<string, string | number>) => translate(language, key, params)
+  const fmt = numberFormatter(language)
 
   const month = TODAY.getMonth() + 1
   const year = TODAY.getFullYear()
@@ -560,7 +581,7 @@ export async function getInsights(): Promise<InsightsSummary> {
   for (const t of thisMonthTx) {
     const c = t.category
     if (!c) continue
-    byCat[c.id] ??= { name: c.name, icon: c.icon, color: c.color, amount: 0 }
+    byCat[c.id] ??= { name: c.isSystem ? localizedSystemCategoryName(c.name, language) : c.name, icon: c.icon, color: c.color, amount: 0 }
     byCat[c.id].amount += t.amount
   }
   const categoryBreakdown = Object.entries(byCat)
@@ -622,9 +643,13 @@ export async function getInsights(): Promise<InsightsSummary> {
     insightCards.push({
       id: 'cat-increase',
       type: 'warning',
-      title: `${biggestIncrease.name} increased`,
-      message: `You've spent ${Math.round(biggestIncrease.delta).toLocaleString()} more than last month.`,
-      detail: `${biggestIncrease.name}: ${Math.round(lastByCat[Object.keys(byCat).find(k => byCat[k].name === biggestIncrease.name)!] ?? 0).toLocaleString()} last month → ${Math.round(byCat[Object.keys(byCat).find(k => byCat[k].name === biggestIncrease.name)!]?.amount ?? 0).toLocaleString()} this month`,
+      title: tr('insight.increasedTitle', { category: biggestIncrease.name }),
+      message: tr('insight.moreThanLastMonth', { amount: fmt(biggestIncrease.delta) }),
+      detail: tr('insight.monthComparison', {
+        category: biggestIncrease.name,
+        last: fmt(lastByCat[Object.keys(byCat).find(k => byCat[k].name === biggestIncrease.name)!] ?? 0),
+        current: fmt(byCat[Object.keys(byCat).find(k => byCat[k].name === biggestIncrease.name)!]?.amount ?? 0),
+      }),
     })
   }
 
@@ -645,8 +670,8 @@ export async function getInsights(): Promise<InsightsSummary> {
       insightCards.push({
         id: 'weekend',
         type: 'info',
-        title: 'Your weekends cost more',
-        message: `${pct}% of this month's discretionary spending happened on Saturdays.`,
+        title: tr('insight.weekendsTitle'),
+        message: tr('insight.weekendsMessage', { percent: pct }),
       })
     }
   }
@@ -670,8 +695,8 @@ export async function getInsights(): Promise<InsightsSummary> {
         insightCards.push({
           id: `exceed-${bc.categoryId}`,
           type: 'warning',
-          title: `You may exceed ${bc.category.name}`,
-          message: `At your current pace you'll reach approximately ${Math.round(projected).toLocaleString()} against your ${Math.round(limit).toLocaleString()} budget.`,
+          title: tr('insight.mayExceedTitle', { category: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name }),
+          message: tr('insight.mayExceedMessage', { projected: fmt(projected), limit: fmt(limit) }),
         })
         break // only show one
       }
@@ -701,9 +726,10 @@ export async function getInsights(): Promise<InsightsSummary> {
       const reasons: string[] = []
       if (thisDailyRate > avgDailyLastMonth * 1.3) {
         reasons.push(
-          `Your daily spend on ${bc.category.name} is ${Math.round(
-            (thisDailyRate / avgDailyLastMonth - 1) * 100
-          )}% higher than last month.`
+          tr('insight.dailySpendHigher', {
+            category: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name,
+            percent: Math.round((thisDailyRate / avgDailyLastMonth - 1) * 100),
+          })
         )
       }
       // Check if there was a single large transaction
@@ -712,33 +738,36 @@ export async function getInsights(): Promise<InsightsSummary> {
         .sort((a, b) => b.amount - a.amount)
       if (catTx[0] && catTx[0].amount > limit * 0.3) {
         reasons.push(
-          `A single ${catTx[0].merchantName ?? 'transaction'} of ${Math.round(catTx[0].amount).toLocaleString()} drove a large portion.`
+          tr('insight.largeTransaction', {
+            merchant: catTx[0].merchantName ?? tr('insight.transactionFallback'),
+            amount: fmt(catTx[0].amount),
+          })
         )
       }
       if (catTx.length > 8) {
-        reasons.push(`You've made ${catTx.length} transactions — frequent small purchases add up.`)
+        reasons.push(tr('insight.frequentPurchases', { count: catTx.length }))
       }
 
       const advice: string[] = []
       if (pctOver > 50) {
-        advice.push('Consider raising the budget or cutting back significantly for the rest of the month.')
+        advice.push(tr('insight.cutBackStrong'))
       } else if (pctOver > 25) {
-        advice.push(`Pause ${bc.category.name} spending for ${Math.ceil(over / thisDailyRate)} days to recover.`)
+        advice.push(tr('insight.pauseSpending', { category: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name, days: Math.ceil(over / thisDailyRate) }))
       } else {
-        advice.push('A small reduction in daily spending can bring this back on track.')
+        advice.push(tr('insight.reduceDaily'))
       }
       if (bc.rolloverType !== 'rollover') {
-        advice.push(`Switch ${bc.category.name} to rollover to absorb future overspends.`)
+        advice.push(tr('insight.switchRollover', { category: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name }))
       }
 
       insightCards.push({
         id: `over-${bc.categoryId}`,
         type: 'warning',
-        title: `${bc.category.name} is ${Math.round(over).toLocaleString()} over budget`,
-        message: `You spent ${Math.round(catSpent).toLocaleString()} against a ${Math.round(limit).toLocaleString()} limit — ${pctOver}% over.`,
+        title: tr('insight.overBudgetTitle', { category: bc.category.isSystem ? localizedSystemCategoryName(bc.category.name, language) : bc.category.name, amount: fmt(over) }),
+        message: tr('insight.overBudgetMessage', { spent: fmt(catSpent), limit: fmt(limit), percent: pctOver }),
         detail: [
-          reasons.length > 0 ? `Why: ${reasons.join(' ')}` : '',
-          `What to do: ${advice.join(' ')}`,
+          reasons.length > 0 ? tr('insight.why', { text: reasons.join(' ') }) : '',
+          tr('insight.whatToDo', { text: advice.join(' ') }),
         ]
           .filter(Boolean)
           .join('\n\n'),
@@ -754,9 +783,9 @@ export async function getInsights(): Promise<InsightsSummary> {
     insightCards.push({
       id: 'recurring-detected',
       type: 'recurring',
-      title: 'New recurring expense',
-      message: `We detected ${recurringCount} monthly recurring payments.`,
-      detail: 'Recurring expenses are tracked automatically.',
+      title: tr('insight.recurringTitle'),
+      message: tr('insight.recurringMessage', { count: recurringCount }),
+      detail: tr('insight.recurringDetail'),
     })
   }
 
@@ -773,8 +802,8 @@ export async function getInsights(): Promise<InsightsSummary> {
     insightCards.push({
       id: 'cat-decrease',
       type: 'positive',
-      title: `${biggestDrop.name} decreased`,
-      message: `You spent ${Math.round(biggestDrop.delta).toLocaleString()} less on ${biggestDrop.name} this month.`,
+      title: tr('insight.decreasedTitle', { category: biggestDrop.name }),
+      message: tr('insight.lessThisMonth', { amount: fmt(biggestDrop.delta), category: biggestDrop.name }),
     })
   }
 
@@ -798,6 +827,8 @@ export async function getInsights(): Promise<InsightsSummary> {
 export async function getRecurring(): Promise<RecurringItem[]> {
   const user = await db.user.findFirst({ where: { email: await getCurrentUserEmail() } })
   if (!user) throw new Error('No user.')
+  const language = userLanguage(user.language)
+  const tr = (key: string, params?: Record<string, string | number>) => translate(language, key, params)
 
   const rules = await db.recurringRule.findMany({
     where: { userId: user.id, isActive: true },
@@ -807,12 +838,12 @@ export async function getRecurring(): Promise<RecurringItem[]> {
 
   return rules.map((r) => ({
     id: r.id,
-    name: r.merchantName || r.description || 'Recurring',
+    name: r.merchantName || r.description || tr('server.recurring'),
     amount: r.amount,
     nextDate: r.nextDate.toISOString(),
     frequency: r.frequency,
     category: r.category
-      ? { name: r.category.name, icon: r.category.icon, color: r.category.color }
+      ? { name: r.category.isSystem ? localizedSystemCategoryName(r.category.name, language) : r.category.name, icon: r.category.icon, color: r.category.color }
       : undefined,
     account: r.account
       ? { name: r.account.name, color: r.account.color }
@@ -874,9 +905,15 @@ export async function getAccounts() {
 export async function getCategories(type?: 'expense' | 'income' | 'transfer') {
   const user = await db.user.findFirst({ where: { email: await getCurrentUserEmail() } })
   if (!user) throw new Error('No user.')
+  const language = userLanguage(user.language)
   const categories = await db.category.findMany({
     where: { userId: user.id, ...(type ? { type } : {}) },
     orderBy: { sortOrder: 'asc' },
   })
-  return categories
+  return categories.map((category) => ({
+    ...category,
+    name: category.isSystem
+      ? localizedSystemCategoryName(category.name, language)
+      : category.name,
+  }))
 }

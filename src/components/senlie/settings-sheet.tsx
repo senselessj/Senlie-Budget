@@ -58,6 +58,7 @@ import {
 } from '@/components/senlie/settings-views'
 
 export function SettingsSheet() {
+  const t = useT()
   const open = useSenlieUI((s) => s.settingsOpen)
   const setOpen = useSenlieUI((s) => s.setSettingsOpen)
   const settingsView = useSenlieUI((s) => s.settingsView)
@@ -65,17 +66,17 @@ export function SettingsSheet() {
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerContent className="max-h-[94vh]">
+      <DrawerContent className="senlie-sheet">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center text-[17px] font-semibold tracking-tight">
-            {settingsView === null ? 'Profile' : ''}
+            {settingsView === null ? t('settings.profile') : ''}
           </DrawerTitle>
           <DrawerDescription className="sr-only">
-            Manage your profile and app settings
+            {t('settings.manageProfile')}
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="max-h-[80vh] overflow-y-auto px-5 pb-[max(env(safe-area-inset-bottom),24px)]">
+        <div className="senlie-sheet-scroll px-5 pb-[max(env(safe-area-inset-bottom),24px)]">
           <AnimatePresence mode="wait">
             <motion.div
               key={settingsView ?? 'root'}
@@ -121,7 +122,7 @@ function SettingsRoot() {
   const haptic = useHaptic()
   const [passwordOpen, setPasswordOpen] = React.useState(false)
 
-  const userName = home?.user.name ?? authUser?.name ?? 'Friend'
+  const userName = home?.user.name ?? authUser?.name ?? (language === 'es' ? 'Amigo' : 'Friend')
   const accountCount = pickers?.accounts.length ?? 4
   const categoryCount = pickers?.categories.length ?? 12
   const recurringCount = recurring?.length ?? 4
@@ -148,7 +149,7 @@ function SettingsRoot() {
         <button
           onClick={async () => {
             haptic('light')
-            const newName = window.prompt('Your name', userName)
+            const newName = window.prompt(t('settings.namePrompt'), userName)
             if (newName && newName.trim() && newName !== userName) {
               try {
                 const res = await fetch('/api/budget/user', {
@@ -157,26 +158,26 @@ function SettingsRoot() {
                   body: JSON.stringify({ name: newName.trim() }),
                 })
                 if (!res.ok) throw new Error('Failed')
-                toast.success('Name updated.')
+                toast.success(t('settings.nameUpdated'))
                 bumpData()
               } catch {
-                toast.error("Couldn't update name.")
+                toast.error(t('settings.nameUpdateFailed'))
               }
             }
           }}
           className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-medium text-muted-foreground"
         >
-          Edit
+          {t('settings.edit')}
         </button>
       </div>
 
       {/* Account */}
-      <SectionLabel>Account</SectionLabel>
+      <SectionLabel>{t('settings.accountSection')}</SectionLabel>
       <SettingsGroup>
         <SettingsRow
           icon={KeyRound}
-          label="Set or change password"
-          value="Password"
+          label={t('settings.password')}
+          value={t('settings.passwordValue')}
           onClick={() => setPasswordOpen(true)}
           last
         />
@@ -184,56 +185,56 @@ function SettingsRoot() {
       <PasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       {/* Financial settings */}
-      <SectionLabel>Financial settings</SectionLabel>
+      <SectionLabel>{t('settings.financialSettings')}</SectionLabel>
       <SettingsGroup>
         <SettingsRow
           icon={Wallet}
-          label="Accounts"
-          value={`${accountCount} accounts`}
+          label={t('settings.accounts')}
+          value={t('settings.accountsValue', { count: accountCount })}
           onClick={() => goTo('accounts')}
         />
         <SettingsRow
           icon={Tags}
-          label="Categories"
-          value={`${categoryCount} categories`}
+          label={t('settings.categories')}
+          value={t('settings.categoriesValue', { count: categoryCount })}
           onClick={() => goTo('categories')}
         />
         <SettingsRow
           icon={RefreshCw}
-          label="Recurring transactions"
-          value={`${recurringCount} active`}
+          label={t('settings.recurring')}
+          value={t('settings.recurringValue', { count: recurringCount })}
           onClick={() => goTo('recurring')}
         />
         <SettingsRow
           icon={Target}
-          label="Savings goals"
+          label={t('settings.savingsGoals')}
           onClick={() => goTo('goals')}
         />
         <SettingsRow
           icon={SlidersHorizontal}
-          label="Budget preferences"
+          label={t('settings.budgetPreferences')}
           onClick={() => goTo('budgetPrefs')}
         />
         <SettingsRow
           icon={Coins}
-          label="Currency"
+          label={t('settings.currency')}
           value={`${home?.user.currencySymbol ?? 'RD$'} · ${home?.user.currencyCode ?? 'DOP'}`}
           onClick={() => goTo('currency')}
         />
         <SettingsRow
           icon={CalendarDays}
-          label="Start of month"
-          value="1st"
+          label={t('settings.startOfMonth')}
+          value={t('settings.startDayValue', { day: home?.user.monthStartDay ?? 1 })}
           onClick={() => goTo('startOfMonth')}
         />
         <SettingsRow
           icon={CalendarClock}
-          label="Pay schedule"
+          label={t('settings.paySchedule')}
           value={
-            home?.paySchedule.schedule
-              ? home.paySchedule.schedule.charAt(0).toUpperCase() +
-                home.paySchedule.schedule.slice(1)
-              : 'Biweekly'
+            home?.paySchedule.schedule === 'monthly' ? t('sv.monthly') :
+            home?.paySchedule.schedule === 'weekly' ? t('sv.weekly') :
+            home?.paySchedule.schedule === 'custom' ? t('sv.irregular') :
+            t('sv.biweekly')
           }
           onClick={() => goTo('paySchedule')}
           last
@@ -241,15 +242,15 @@ function SettingsRoot() {
       </SettingsGroup>
 
       {/* Appearance */}
-      <SectionLabel>Appearance</SectionLabel>
+      <SectionLabel>{t('settings.appearance')}</SectionLabel>
       <SettingsGroup>
         <div className="p-3">
-          <div className="mb-2 text-[13px] text-muted-foreground">Theme</div>
+          <div className="mb-2 text-[13px] text-muted-foreground">{t('settings.theme')}</div>
           <div className="flex gap-1 rounded-[12px] bg-muted p-1">
             {([
-              { key: 'light', label: 'Light', icon: Sun },
-              { key: 'dark', label: 'Dark', icon: Moon },
-              { key: 'system', label: 'System', icon: Monitor },
+              { key: 'light', label: t('settings.light'), icon: Sun },
+              { key: 'dark', label: t('settings.dark'), icon: Moon },
+              { key: 'system', label: t('settings.system'), icon: Monitor },
             ] as const).map((opt) => {
               const isActive = theme === opt.key
               return (
@@ -280,7 +281,7 @@ function SettingsRoot() {
         </div>
         <SettingsRow
           icon={Globe}
-          label="Language"
+          label={t('settings.language')}
           value={language === 'es' ? 'Español' : 'English'}
           onClick={() => goTo('language')}
           last
@@ -288,15 +289,15 @@ function SettingsRoot() {
       </SettingsGroup>
 
       {/* Privacy */}
-      <SectionLabel>Privacy</SectionLabel>
+      <SectionLabel>{t('settings.privacy')}</SectionLabel>
       <SettingsGroup>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <RowIcon icon={hideBalances ? EyeOff : Eye} />
             <div>
-              <div className="text-[15px] font-medium">Hide balances</div>
+              <div className="text-[15px] font-medium">{t('settings.hideBalances')}</div>
               <div className="text-[12px] text-muted-foreground">
-                Mask all financial amounts
+                {t('settings.hideBalancesDesc')}
               </div>
             </div>
           </div>
@@ -308,13 +309,13 @@ function SettingsRoot() {
             }}
           />
         </div>
-        <SettingsRow icon={Fingerprint} label="Face ID" value="Immediately" onClick={() => {
+        <SettingsRow icon={Fingerprint} label={t('settings.faceId')} value={t('settings.immediately')} onClick={() => {
           haptic('light')
-          toast.info('Face ID — managed by your device')
+          toast.info(t('settings.faceIdManaged'))
         }} />
-        <SettingsRow icon={Shield} label="App lock" value="On" onClick={() => {
+        <SettingsRow icon={Shield} label={t('settings.appLock')} value={t('settings.on')} onClick={() => {
           haptic('light')
-          toast.info('App lock — managed by your device')
+          toast.info(t('settings.appLockManaged'))
         }} />
         <SettingsRow
           icon={Bell}
@@ -323,9 +324,9 @@ function SettingsRoot() {
             try {
               const s = JSON.parse(localStorage.getItem('senlie-notifications') || '{}')
               const count = Object.values(s).filter(Boolean).length
-              return count > 0 ? `${count} on` : 'Off'
+              return count > 0 ? t('settings.countOn', { count }) : t('settings.off')
             } catch {
-              return '5 on'
+              return t('settings.countOn', { count: 5 })
             }
           })()}
           onClick={() => goTo('notifications')}
@@ -334,16 +335,16 @@ function SettingsRoot() {
       </SettingsGroup>
 
       {/* App */}
-      <SectionLabel>App</SectionLabel>
+      <SectionLabel>{t('settings.app')}</SectionLabel>
       <SettingsGroup>
         <InstallAppRow />
       </SettingsGroup>
 
       {/* Data */}
-      <SectionLabel>Data</SectionLabel>
+      <SectionLabel>{t('settings.data')}</SectionLabel>
       <SettingsGroup>
-        <SettingsRow icon={Download} label="Export" onClick={() => goTo('export')} />
-        <SettingsRow icon={Upload} label="Import" onClick={async () => {
+        <SettingsRow icon={Download} label={t('settings.export')} onClick={() => goTo('export')} />
+        <SettingsRow icon={Upload} label={t('settings.import')} onClick={async () => {
           haptic('light')
           const input = document.createElement('input')
           input.type = 'file'
@@ -361,38 +362,38 @@ function SettingsRoot() {
               if (!res.ok) throw new Error('Import failed')
               const result = await res.json()
               haptic('success')
-              toast.success(`Imported ${result.imported} transactions`, {
-                description: result.skipped > 0 ? `${result.skipped} rows skipped` : undefined,
+              toast.success(t('settings.importedTransactions', { count: result.imported }), {
+                description: result.skipped > 0 ? t('settings.rowsSkipped', { count: result.skipped }) : undefined,
               })
               bumpData()
             } catch {
               haptic('warning')
-              toast.error("Couldn't import the file.", {
-                description: 'Make sure it\'s a valid CSV exported from Senlie Budget.',
+              toast.error(t('settings.importFailed'), {
+                description: t('settings.importHint'),
               })
             }
           }
           input.click()
         }} />
-        <SettingsRow icon={DatabaseBackup} label="Backups" value="Auto" onClick={() => {
+        <SettingsRow icon={DatabaseBackup} label={t('settings.backups')} value={t('settings.auto')} onClick={() => {
           haptic('light')
-          toast.info('Backups are automatic and local-first.')
+          toast.info(t('settings.backupsAutomatic'))
         }} last />
       </SettingsGroup>
 
       {/* About */}
-      <SectionLabel>About</SectionLabel>
+      <SectionLabel>{t('settings.about')}</SectionLabel>
       <SettingsGroup>
         <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
           <SenlieSymbol size={36} className="text-foreground" />
           <div className="text-[16px] font-semibold tracking-tight">Senlie Budget</div>
-          <div className="text-[12px] text-muted-foreground">by Senlie Technologies</div>
-          <div className="mt-1 text-[11px] text-muted-foreground/70">Version 0.4.4</div>
-          <div className="text-[11px] text-muted-foreground/70">Your money, clearly.</div>
+          <div className="text-[12px] text-muted-foreground">{t('settings.bySenlie')}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground/70">{t('settings.version')} 0.5.0</div>
+          <div className="text-[11px] text-muted-foreground/70">{t('settings.tagline')}</div>
         </div>
         <SettingsRow
           icon={Shield}
-          label="Terms & Privacy"
+          label={t('settings.termsPrivacy')}
           onClick={() => goTo('legal')}
           last
         />
@@ -403,12 +404,12 @@ function SettingsRoot() {
         onClick={() => {
           haptic('light')
           signOut()
-          toast.success('Signed out')
+          toast.success(t('settings.signedOut'))
         }}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-card py-3.5 text-[15px] font-medium text-negative transition-colors active:scale-[0.99]"
       >
         <LogOut size={18} />
-        Sign out
+        {t('settings.signOut')}
       </button>
     </>
   )
@@ -422,6 +423,7 @@ function PasswordDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const t = useT()
   const updatePassword = useAuth((s) => s.updatePassword)
   const isLoading = useAuth((s) => s.isLoading)
   const storeError = useAuth((s) => s.error)
@@ -444,17 +446,17 @@ function PasswordDialog({
     setLocalError(null)
     clearError()
     if (password.length < 8) {
-      setLocalError('Use at least 8 characters.')
+      setLocalError(t('auth.passwordHint'))
       return
     }
     if (password !== confirmPassword) {
-      setLocalError('Passwords do not match.')
+      setLocalError(t('settings.passwordMismatch'))
       return
     }
 
     try {
       await updatePassword(password)
-      toast.success('Password updated.')
+      toast.success(t('settings.passwordUpdated'))
       onOpenChange(false)
     } catch {
       // Auth store owns the backend-visible error.
@@ -467,14 +469,14 @@ function PasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[390px] rounded-[22px] border-border/60 p-5">
         <DialogHeader className="text-left">
-          <DialogTitle className="text-[20px] tracking-tight">Set your password</DialogTitle>
+          <DialogTitle className="text-[20px] tracking-tight">{t('settings.passwordDialogTitle')}</DialogTitle>
           <DialogDescription className="text-[13px] leading-relaxed">
-            This password belongs to your Supabase Auth account. Senlie never stores it in the public users table.
+            {t('settings.passwordDialogDesc')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="senlie-new-password">New password</Label>
+            <Label htmlFor="senlie-new-password">{t('settings.newPassword')}</Label>
             <Input
               id="senlie-new-password"
               type="password"
@@ -487,12 +489,12 @@ function PasswordDialog({
                   clearError()
                 }
               }}
-              placeholder="At least 8 characters"
+              placeholder={t('settings.atLeast8')}
               className="h-12 rounded-[14px]"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="senlie-confirm-password">Confirm password</Label>
+            <Label htmlFor="senlie-confirm-password">{t('settings.confirmPassword')}</Label>
             <Input
               id="senlie-confirm-password"
               type="password"
@@ -505,7 +507,7 @@ function PasswordDialog({
                   clearError()
                 }
               }}
-              placeholder="Repeat password"
+              placeholder={t('settings.repeatPassword')}
               className="h-12 rounded-[14px]"
             />
           </div>
@@ -520,10 +522,10 @@ function PasswordDialog({
             className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[var(--senlie)] text-[15px] font-semibold text-[var(--senlie-foreground)] transition-all hover:opacity-95 disabled:opacity-60"
           >
             {isLoading ? <Loader2 size={17} className="animate-spin" /> : <KeyRound size={17} />}
-            {isLoading ? 'Saving…' : 'Save password'}
+            {isLoading ? t('settings.saving') : t('settings.savePassword')}
           </button>
           <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-            Existing email-code accounts can sign in with a code one final time, set a password here, then use password sign-in from then on.
+            {t('settings.passwordLegacyHint')}
           </p>
         </form>
       </DialogContent>

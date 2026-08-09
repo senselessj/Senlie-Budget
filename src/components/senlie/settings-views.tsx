@@ -12,7 +12,7 @@ import {
   useHaptic,
 } from '@/hooks/use-senlie-data'
 import { useLanguage } from '@/hooks/use-t'
-import { LANGUAGES } from '@/lib/i18n'
+import { LANGUAGES, translate } from '@/lib/i18n'
 import { useT } from '@/hooks/use-t'
 import { AccountIcon, CategoryIcon } from '@/components/senlie/category-icon'
 import { formatMoney, maskBalance } from '@/lib/currency'
@@ -182,7 +182,7 @@ export function RecurringView() {
         {items.map((r, i) => {
           const date = new Date(r.nextDate)
           const daysUntil = Math.ceil(
-            (date.getTime() - new Date('2026-08-08T18:42:00-04:00').getTime()) /
+            (date.getTime() - new Date().getTime()) /
               (24 * 60 * 60 * 1000)
           )
           return (
@@ -239,6 +239,7 @@ export function GoalsView() {
   const symbol = home?.user.currencySymbol ?? 'RD$'
   const hideBalances = useSenlieUI((s) => s.hideBalances)
   const t = useT()
+  const { locale } = useLanguage()
   const items = goals ?? []
 
   const totalSaved = items.reduce((s, g) => s + g.currentAmount, 0)
@@ -287,7 +288,7 @@ export function GoalsView() {
                   <div className="text-[15px] font-medium truncate">{g.name}</div>
                   <div className="text-[12px] text-muted-foreground">
                     {g.targetDate
-                      ? t('sv.targetDate', { date: new Date(g.targetDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) })
+                      ? t('sv.targetDate', { date: new Date(g.targetDate).toLocaleDateString(locale, { month: 'short', year: 'numeric' }) })
                       : t('sv.noTargetDate')}
                   </div>
                 </div>
@@ -398,7 +399,9 @@ export function CurrencyView() {
 // ============================================================================
 export function PayScheduleView() {
   const haptic = useHaptic()
+  const bumpData = useSenlieUI((s) => s.bumpData)
   const t = useT()
+  const { locale } = useLanguage()
   const { data: home } = useHomeSummary()
   const current = home?.paySchedule.schedule ?? 'biweekly'
 
@@ -451,7 +454,7 @@ export function PayScheduleView() {
         <div className="mt-4 rounded-[16px] bg-card p-4">
           <div className="text-[13px] text-muted-foreground">{t('sv.nextPayday')}</div>
           <div className="mt-1 text-[17px] font-semibold">
-            {new Date(home.paySchedule.nextPayDate).toLocaleDateString('en-US', {
+            {new Date(home.paySchedule.nextPayDate).toLocaleDateString(locale, {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
@@ -818,10 +821,12 @@ export function LanguageView() {
           return (
             <button
               key={lang.code}
-              onClick={() => {
+              onClick={async () => {
                 haptic('medium')
                 if (isActive) return
-                setLanguage(lang.code)
+                const synced = await setLanguage(lang.code)
+                if (synced) toast.success(translate(lang.code, 'settings.languageSaved'))
+                else toast.warning(translate(lang.code, 'settings.languageSaveFailed'))
               }}
               className={cn(
                 'flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-muted/50',

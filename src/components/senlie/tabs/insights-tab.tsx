@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useInsights, useHomeSummary, useHaptic } from '@/hooks/use-senlie-data'
 import { useSenlieUI } from '@/lib/store'
 import { formatMoney, maskBalance } from '@/lib/currency'
-import { monthName } from '@/lib/finance-utils'
 import { AnimatedNumber } from '@/components/senlie/animated-number'
 import { InsightsHeroCard } from '@/components/senlie/insights-hero-card'
 import { InsightsCategoryBars } from '@/components/senlie/insights-category-bars'
@@ -64,7 +63,7 @@ export function InsightsTab() {
           {t('insights.title')}
         </h1>
         <p className="text-[15px] text-muted-foreground">
-          {monthName(data.month)}
+          {t(`month.${data.month}`)}
         </p>
       </motion.header>
 

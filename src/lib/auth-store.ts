@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseConfigurationError } from '@/lib/supabase'
+import type { Language } from '@/lib/i18n'
 
 export interface SenlieUser {
   id: string
@@ -10,6 +11,7 @@ export interface SenlieUser {
   name: string
   onboardingComplete: boolean
   termsAccepted: boolean
+  language: Language
 }
 
 type PasswordSignupResult = 'signed_in' | 'confirmation_required'
@@ -28,7 +30,7 @@ interface AuthState {
   requestOtp: (email: string) => Promise<void>
   verifyOtp: (email: string, token: string) => Promise<void>
   signOut: () => Promise<void>
-  completeOnboarding: () => void
+  completeOnboarding: (language?: Language) => void
   clearError: () => void
 }
 
@@ -81,29 +83,61 @@ async function mirrorServerSession(session: Session | null) {
 async function loadProfile(authUser: User): Promise<SenlieUser> {
   const client = requireSupabase()
 
-  // The auth.users -> public.users trigger is synchronous, but retry briefly so
-  // a freshly-created account never flashes a false "missing profile" error.
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const readProfile = async () => {
     const { data, error } = await client
       .from('users')
-      .select('id,email,name,onboarding_complete,terms_accepted')
+      .select('id,email,name,onboarding_complete,terms_accepted,language')
       .eq('id', authUser.id)
       .maybeSingle()
 
-    if (error) throw new Error(error.message)
-    if (data) {
-      return {
-        id: data.id,
-        email: data.email ?? authUser.email ?? '',
-        name: data.name ?? authUser.email?.split('@')[0] ?? 'Friend',
-        onboardingComplete: Boolean(data.onboarding_complete),
-        termsAccepted: Boolean(data.terms_accepted),
+    if (error) {
+      const message = String(error.message || '')
+      if (message.toLowerCase().includes('could not find the table') || message.toLowerCase().includes('schema cache')) {
+        throw new Error('Senlie Budget database setup is missing. Run SUPABASE_SETUP.sql once in the Supabase SQL Editor.')
       }
+      throw new Error(message)
     }
-    await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)))
+    return data
   }
 
-  throw new Error('Your Senlie profile was not created. Run the latest SUPABASE_SETUP.sql once in Supabase.')
+  let data = await readProfile()
+
+  // The auth.users trigger is the normal creation path. If this account was
+  // created before that trigger existed, ask the database to repair only the
+  // currently authenticated user's profile, then read it again.
+  if (!data) {
+    const { error: repairError } = await client.rpc('senlie_ensure_profile')
+    if (repairError) {
+      const message = String(repairError.message || '')
+      if (
+        message.toLowerCase().includes('could not find the function') ||
+        message.toLowerCase().includes('schema cache') ||
+        message.toLowerCase().includes('senlie_ensure_profile')
+      ) {
+        throw new Error('Your Senlie database is older than this app. Run the latest SUPABASE_SETUP.sql once; it will backfill your profile and install automatic profile repair.')
+      }
+      throw new Error(`Could not repair your Senlie profile: ${message}`)
+    }
+
+    // PostgREST can need a tiny moment after the repair RPC returns.
+    for (let attempt = 0; attempt < 3 && !data; attempt++) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 150 * attempt))
+      data = await readProfile()
+    }
+  }
+
+  if (!data) {
+    throw new Error('Your Senlie profile could not be created. Re-run the latest SUPABASE_SETUP.sql in Supabase and sign in again.')
+  }
+
+  return {
+    id: data.id,
+    email: data.email ?? authUser.email ?? '',
+    name: data.name ?? authUser.email?.split('@')[0] ?? 'Friend',
+    onboardingComplete: Boolean(data.onboarding_complete),
+    termsAccepted: Boolean(data.terms_accepted),
+    language: data.language === 'es' ? 'es' : 'en',
+  }
 }
 
 async function acceptAuthenticatedSession(session: Session, authUser: User) {
@@ -315,9 +349,11 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
-  completeOnboarding: () => {
+  completeOnboarding: (language) => {
     set((s) => ({
-      user: s.user ? { ...s.user, onboardingComplete: true } : null,
+      user: s.user
+        ? { ...s.user, onboardingComplete: true, ...(language ? { language } : {}) }
+        : null,
     }))
   },
 

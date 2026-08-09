@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Download, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useT } from '@/hooks/use-t'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -11,6 +12,7 @@ type BeforeInstallPromptEvent = Event & {
 }
 
 export function InstallAppRow({ className }: { className?: string }) {
+  const t = useT()
   const [promptEvent, setPromptEvent] = React.useState<BeforeInstallPromptEvent | null>(null)
   const [installed, setInstalled] = React.useState(false)
 
@@ -28,7 +30,7 @@ export function InstallAppRow({ className }: { className?: string }) {
     const onInstalled = () => {
       setInstalled(true)
       setPromptEvent(null)
-      toast.success('Senlie Budget installed')
+      toast.success(t('pwa.installedToast'))
     }
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
@@ -41,13 +43,13 @@ export function InstallAppRow({ className }: { className?: string }) {
 
   const install = async () => {
     if (installed) {
-      toast.success('Senlie Budget is already installed.')
+      toast.success(t('pwa.alreadyInstalled'))
       return
     }
 
     if (!promptEvent) {
-      toast.info('Install Senlie from your browser menu', {
-        description: 'On Android Chrome, choose “Add to Home screen” or “Install app”.',
+      toast.info(t('pwa.browserMenu'), {
+        description: t('pwa.androidHint'),
       })
       return
     }
@@ -70,13 +72,13 @@ export function InstallAppRow({ className }: { className?: string }) {
         {installed ? <CheckCircle2 size={16} strokeWidth={2.2} /> : <Download size={16} strokeWidth={2.2} />}
       </div>
       <div className="flex-1">
-        <div className="text-[15px] font-medium">{installed ? 'Installed app' : 'Install Senlie Budget'}</div>
+        <div className="text-[15px] font-medium">{installed ? t('pwa.installedApp') : t('pwa.installApp')}</div>
         <div className="text-[12px] text-muted-foreground">
-          {installed ? 'Running as an installed app' : 'Add Senlie to your Android home screen'}
+          {installed ? t('pwa.runningInstalled') : t('pwa.addAndroidHome')}
         </div>
       </div>
       <span className="text-[13px] font-medium text-[var(--senlie)]">
-        {installed ? 'Ready' : 'Install'}
+        {installed ? t('pwa.ready') : t('pwa.install')}
       </span>
     </button>
   )

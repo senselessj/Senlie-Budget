@@ -25,6 +25,54 @@ export type SettingsView =
 // What kind of entity the AddEntitySheet is creating.
 export type AddEntityType = 'category' | 'account' | 'goal' | 'recurring'
 
+export interface SenlieNavigationSnapshot {
+  activeTab: TabKey
+  addSheetOpen: boolean
+  editingTransactionId: string | null
+  settingsOpen: boolean
+  settingsView: SettingsView
+  addEntityType: AddEntityType | null
+  selectedTransactionId: string | null
+  activityFilterOpen: boolean
+}
+
+export const SENLIE_HISTORY_KEY = '__senlieNavigation'
+let historyBridgeReady = false
+
+export function setSenlieHistoryBridgeReady(ready: boolean) {
+  historyBridgeReady = ready
+}
+
+export function makeNavigationSnapshot(state: SenlieUIState): SenlieNavigationSnapshot {
+  return {
+    activeTab: state.activeTab,
+    addSheetOpen: state.addSheetOpen,
+    editingTransactionId: state.editingTransactionId,
+    settingsOpen: state.settingsOpen,
+    settingsView: state.settingsView,
+    addEntityType: state.addEntityType,
+    selectedTransactionId: state.selectedTransactionId,
+    activityFilterOpen: state.activityFilterOpen,
+  }
+}
+
+function pushHistory(snapshot: SenlieNavigationSnapshot) {
+  if (!historyBridgeReady || typeof window === 'undefined') return
+  window.history.pushState({ [SENLIE_HISTORY_KEY]: true, snapshot }, '', window.location.href)
+}
+
+function requestHistoryBack(fallback: () => void, steps = 1) {
+  if (
+    historyBridgeReady &&
+    typeof window !== 'undefined' &&
+    (window.history.state?.[SENLIE_HISTORY_KEY] || window.history.state?.__senlieRoot)
+  ) {
+    window.history.go(-Math.max(1, steps))
+    return
+  }
+  fallback()
+}
+
 interface SenlieUIState {
   activeTab: TabKey
   setActiveTab: (t: TabKey) => void
@@ -58,6 +106,12 @@ interface SenlieUIState {
   selectedTransactionId: string | null
   setSelectedTransactionId: (id: string | null) => void
 
+  activityFilterOpen: boolean
+  setActivityFilterOpen: (v: boolean) => void
+
+  // Restores a UI snapshot from browser/app history without creating new history.
+  restoreNavigation: (snapshot: SenlieNavigationSnapshot) => void
+
   // Preset filter for Activity tab (e.g. when tapping a budget category)
   activityPresetCategory: string | null
   setActivityPresetCategory: (id: string | null) => void
@@ -81,9 +135,13 @@ interface SenlieUIState {
 
 export const useSenlieUI = create<SenlieUIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       activeTab: 'home',
-      setActiveTab: (t) => set({ activeTab: t }),
+      setActiveTab: (t) => {
+        if (get().activeTab === t) return
+        set({ activeTab: t })
+        pushHistory(makeNavigationSnapshot(get()))
+      },
 
       hideBalances: false,
       toggleHideBalances: () => set((s) => ({ hideBalances: !s.hideBalances })),
@@ -93,25 +151,116 @@ export const useSenlieUI = create<SenlieUIState>()(
       setLanguage: (l) => set({ language: l }),
 
       addSheetOpen: false,
-      setAddSheetOpen: (v) => set({ addSheetOpen: v }),
+      setAddSheetOpen: (v) => {
+        if (v === get().addSheetOpen) return
+        if (v) {
+          set({ addSheetOpen: true })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ addSheetOpen: false }))
+        }
+      },
 
       editingTransactionId: null,
-      setEditingTransactionId: (id) => set({ editingTransactionId: id }),
+      setEditingTransactionId: (id) => {
+        const current = get().editingTransactionId
+        if (id === current) return
+        if (id) {
+          set({ editingTransactionId: id })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ editingTransactionId: null }))
+        }
+      },
 
       settingsOpen: false,
-      setSettingsOpen: (v) =>
-        set((s) => ({ settingsOpen: v, ...(v ? {} : { settingsView: null }) })),
+      setSettingsOpen: (v) => {
+        const state = get()
+        if (v === state.settingsOpen) return
+        if (v) {
+          set({ settingsOpen: true, settingsView: null })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          const steps = state.settingsView ? 2 : 1
+          requestHistoryBack(
+            () => set({ settingsOpen: false, settingsView: null, addEntityType: null }),
+            steps
+          )
+        }
+      },
 
       settingsView: null,
-      setSettingsView: (v) => set({ settingsView: v }),
-      openSettingsView: (v) => set({ settingsOpen: true, settingsView: v }),
+      setSettingsView: (v) => {
+        const state = get()
+        if (v === state.settingsView) return
+        if (v) {
+          set({ settingsView: v })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ settingsView: null }))
+        }
+      },
+      openSettingsView: (v) => {
+        const state = get()
+        if (state.settingsOpen) {
+          set({ settingsView: v })
+          pushHistory(makeNavigationSnapshot(get()))
+          return
+        }
+
+        // Direct links into a settings sub-view still get a logical Settings root
+        // entry underneath them, so Android/iOS back returns naturally.
+        set({ settingsOpen: true, settingsView: null })
+        pushHistory(makeNavigationSnapshot(get()))
+        set({ settingsView: v })
+        pushHistory(makeNavigationSnapshot(get()))
+      },
 
       addEntityType: null,
-      openAddEntity: (t) => set({ addEntityType: t }),
-      closeAddEntity: () => set({ addEntityType: null }),
+      openAddEntity: (t) => {
+        if (get().addEntityType === t) return
+        set({ addEntityType: t })
+        pushHistory(makeNavigationSnapshot(get()))
+      },
+      closeAddEntity: () => {
+        if (!get().addEntityType) return
+        requestHistoryBack(() => set({ addEntityType: null }))
+      },
 
       selectedTransactionId: null,
-      setSelectedTransactionId: (id) => set({ selectedTransactionId: id }),
+      setSelectedTransactionId: (id) => {
+        const current = get().selectedTransactionId
+        if (id === current) return
+        if (id) {
+          set({ selectedTransactionId: id })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ selectedTransactionId: null }))
+        }
+      },
+
+      activityFilterOpen: false,
+      setActivityFilterOpen: (v) => {
+        if (v === get().activityFilterOpen) return
+        if (v) {
+          set({ activityFilterOpen: true })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ activityFilterOpen: false }))
+        }
+      },
+
+      restoreNavigation: (snapshot) =>
+        set({
+          activeTab: snapshot.activeTab,
+          addSheetOpen: snapshot.addSheetOpen,
+          editingTransactionId: snapshot.editingTransactionId,
+          settingsOpen: snapshot.settingsOpen,
+          settingsView: snapshot.settingsView,
+          addEntityType: snapshot.addEntityType,
+          selectedTransactionId: snapshot.selectedTransactionId,
+          activityFilterOpen: snapshot.activityFilterOpen ?? false,
+        }),
 
       activityPresetCategory: null,
       setActivityPresetCategory: (id) => set({ activityPresetCategory: id }),

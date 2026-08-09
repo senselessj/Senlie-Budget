@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'senlie-static-v2'
+const STATIC_CACHE = 'senlie-static-v3'
 const OFFLINE_URL = '/offline.html'
 const STATIC_ASSETS = [
   OFFLINE_URL,

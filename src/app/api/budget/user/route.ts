@@ -4,7 +4,7 @@ import { getCurrentUserEmail } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
-// PATCH /api/budget/user — update user settings (currency, paySchedule, monthStartDay, name)
+// PATCH /api/budget/user — update user settings
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json()
@@ -22,6 +22,12 @@ export async function PATCH(req: NextRequest) {
     if (body.paySchedule !== undefined) allowed.paySchedule = body.paySchedule
     if (body.monthStartDay !== undefined) allowed.monthStartDay = parseInt(body.monthStartDay)
     if (body.hideBalances !== undefined) allowed.hideBalances = body.hideBalances
+    if (body.language !== undefined) {
+      if (!['en', 'es'].includes(body.language)) {
+        return NextResponse.json({ error: 'Unsupported language' }, { status: 400 })
+      }
+      allowed.language = body.language
+    }
 
     if (Object.keys(allowed).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })

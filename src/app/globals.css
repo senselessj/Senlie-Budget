@@ -250,3 +250,69 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* --------------------------------------------------------------------------
+   Mobile app shell — Android TWA + iOS standalone PWA
+   -------------------------------------------------------------------------- */
+html {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+}
+
+body {
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * A sheet owns the bottom of the screen while it is open. `dvh` follows the
+ * actually visible viewport on mobile (including browser/keyboard changes),
+ * while the flex scroll region keeps its CTA reachable above the home area.
+ */
+.senlie-sheet {
+  max-height: calc(100dvh - max(env(safe-area-inset-top), 12px));
+  overflow: hidden;
+}
+
+.senlie-sheet-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.senlie-sheet-footer {
+  flex-shrink: 0;
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  background: var(--background);
+}
+
+/* Any Vaul drawer, including locally-owned drawers such as Activity filters,
+   suppresses primary navigation so the tab bar can never cover sheet CTAs. */
+body:has([data-slot="drawer-content"][data-state="open"]) [data-senlie-tabbar] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+}
+
+/* iOS standalone PWAs need to occupy the safe-area-aware viewport cleanly. */
+@supports (-webkit-touch-callout: none) {
+  html,
+  body {
+    min-height: -webkit-fill-available;
+  }
+
+  .senlie-sheet-scroll {
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
+}

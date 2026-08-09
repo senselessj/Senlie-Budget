@@ -5,6 +5,7 @@
 import { db } from '@/lib/db'
 import {
   getCurrentAuthUser,
+  getServerSupabase,
   SenlieAuthError,
   SENLIE_AUTH_COOKIE,
 } from '@/lib/supabase-server'
@@ -19,9 +20,19 @@ export async function getCurrentUserEmail(): Promise<string> {
 
 export async function getCurrentUser() {
   const authUser = await getCurrentAuthUser()
-  const user = await db.user.findUnique({ where: { id: authUser.id } })
+  let user = await db.user.findUnique({ where: { id: authUser.id } })
+
   if (!user) {
-    throw new Error('Your Senlie profile is missing. Run the latest SUPABASE_SETUP.sql once in the Supabase SQL Editor.')
+    const supabase = await getServerSupabase()
+    const { error } = await supabase.rpc('senlie_ensure_profile')
+    if (error) {
+      throw new Error('Your Senlie profile is missing and could not be repaired. Run the latest SUPABASE_SETUP.sql once in the Supabase SQL Editor.')
+    }
+    user = await db.user.findUnique({ where: { id: authUser.id } })
+  }
+
+  if (!user) {
+    throw new Error('Your Senlie profile is still missing after repair. Re-run SUPABASE_SETUP.sql and sign in again.')
   }
   return user
 }

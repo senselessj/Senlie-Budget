@@ -46,14 +46,13 @@ export function ActivityTab() {
   const setPresetCategory = useSenlieUI((s) => s.setActivityPresetCategory)
   const advancedFilter = useSenlieUI((s) => s.activityAdvancedFilter)
   const setAdvancedFilter = useSenlieUI((s) => s.setActivityAdvancedFilter)
+  const filterSheetOpen = useSenlieUI((s) => s.activityFilterOpen)
+  const setFilterSheetOpen = useSenlieUI((s) => s.setActivityFilterOpen)
 
   // Filter + search (debounced ~250ms)
   const [filter, setFilter] = React.useState<FilterKey>('all')
   const [searchInput, setSearchInput] = React.useState('')
   const [search, setSearch] = React.useState('')
-
-  // Filter sheet (advanced filters)
-  const [filterSheetOpen, setFilterSheetOpen] = React.useState(false)
 
   React.useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 250)

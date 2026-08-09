@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { motion } from 'framer-motion'
 import { formatMoney, maskBalance } from '@/lib/currency'
-import { monthName } from '@/lib/finance-utils'
 import { AnimatedNumber } from '@/components/senlie/animated-number'
 import { BudgetHorizontalProgress } from '@/components/senlie/budget-horizontal-progress'
 import { useT } from '@/hooks/use-t'
@@ -35,7 +34,7 @@ export function BudgetHeaderCard({
   hideBalances: boolean
 }) {
   const t = useT()
-  const monthLabel = monthName(data.month)
+  const monthLabel = t(`month.${data.month}`)
   const ratio = data.committed > 0 ? data.spent / data.committed : 0
   const statusMeta = STATUS_META[data.status]
 

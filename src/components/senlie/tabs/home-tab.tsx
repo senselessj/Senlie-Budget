@@ -7,7 +7,7 @@ import { useHomeSummary, useHaptic } from '@/hooks/use-senlie-data'
 import { useSenlieUI } from '@/lib/store'
 import { useT } from '@/hooks/use-t'
 import { formatMoney, maskBalance } from '@/lib/currency'
-import { TODAY, monthName } from '@/lib/finance-utils'
+import { TODAY } from '@/lib/finance-utils'
 import { AnimatedNumber } from '@/components/senlie/animated-number'
 import { Skeleton } from '@/components/ui/skeleton'
 import { HomeCurvedProgress } from '@/components/senlie/home-curved-progress'
@@ -30,11 +30,11 @@ function greetingKey(): string {
 
 const STATUS_META: Record<
   'healthy' | 'warning' | 'exceeded',
-  { label: string; color: string }
+  { labelKey: string; color: string }
 > = {
-  healthy: { label: 'Healthy', color: 'var(--senlie)' },
-  warning: { label: 'Approaching', color: 'var(--warning)' },
-  exceeded: { label: 'Over', color: 'var(--negative)' },
+  healthy: { labelKey: 'home.healthy', color: 'var(--senlie)' },
+  warning: { labelKey: 'home.approaching', color: 'var(--warning)' },
+  exceeded: { labelKey: 'home.over', color: 'var(--negative)' },
 }
 
 export function HomeTab() {
@@ -63,7 +63,7 @@ export function HomeTab() {
     return (
       <div className="mx-auto max-w-md px-5 py-10">
         <p className="text-[15px] text-muted-foreground">
-          Your finances will appear here once you add your first account.
+          {t('home.empty')}
         </p>
       </div>
     )
@@ -71,7 +71,7 @@ export function HomeTab() {
 
   const symbol = data.user.currencySymbol || 'RD$'
   const firstName = data.user.name.split(' ')[0] || data.user.name
-  const monthLabel = monthName(TODAY.getMonth() + 1) // "August"
+  const monthLabel = t(`month.${TODAY.getMonth() + 1}`)
   const yearLabel = TODAY.getFullYear() // 2026
   const dateLabel = `${monthLabel} ${yearLabel}`
 
@@ -100,7 +100,7 @@ export function HomeTab() {
             haptic('light')
             setSettingsOpen(true)
           }}
-          aria-label="Open settings"
+          aria-label={t('home.openSettings')}
           className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold text-white shadow-card"
           style={{ backgroundColor: data.user.avatarColor, boxShadow: '0 0 0 2px var(--background), 0 0 0 4px rgba(0,0,0,0.06)' }}
         >
@@ -173,7 +173,7 @@ export function HomeTab() {
               style={{ backgroundColor: statusMeta.color }}
             />
             <span className="text-[12px] font-medium text-muted-foreground">
-              {statusMeta.label}
+              {t(statusMeta.labelKey)}
             </span>
           </div>
         </div>
@@ -189,13 +189,13 @@ export function HomeTab() {
 
         {/* Caption */}
         <p className="mt-1 text-center text-[14px] text-muted-foreground">
-          You&rsquo;ve used {percentUsed}% of your monthly budget.
+          {t('home.monthBudgetUsed', { percent: percentUsed })}
         </p>
 
         {/* Bottom row */}
         <div className="mt-4 grid grid-cols-2 gap-4">
           <div>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Spent</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t('home.spent')}</div>
             <div className="tnum text-[16px] font-semibold tracking-tight text-foreground">
               {hideBalances
                 ? maskBalance(symbol)
@@ -203,7 +203,7 @@ export function HomeTab() {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Remaining</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t('home.remaining')}</div>
             <div className="tnum text-[16px] font-semibold tracking-tight text-foreground">
               {hideBalances
                 ? maskBalance(symbol)
@@ -302,14 +302,15 @@ function HomeSkeleton() {
 // ----------------------------------------------------------------
 function HomeError({ onRetry }: { onRetry: () => void }) {
   const haptic = useHaptic()
+  const t = useT()
   return (
     <div className="mx-auto max-w-md px-5 py-16 flex flex-col items-center text-center">
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <RotateCcw size={20} strokeWidth={2.2} />
       </div>
-      <p className="text-[15px] font-medium text-foreground">Couldn&rsquo;t load your finances</p>
+      <p className="text-[15px] font-medium text-foreground">{t('home.couldntLoad')}</p>
       <p className="mt-1 text-[13px] text-muted-foreground">
-        Pull down to try again, or tap below to retry.
+        {t('home.retryDesc')}
       </p>
       <button
         type="button"
@@ -320,7 +321,7 @@ function HomeError({ onRetry }: { onRetry: () => void }) {
         className="mt-5 rounded-full px-5 py-2.5 text-[14px] font-semibold text-white shadow-card"
         style={{ backgroundColor: 'var(--senlie)' }}
       >
-        Retry
+        {t('home.retry')}
       </button>
     </div>
   )

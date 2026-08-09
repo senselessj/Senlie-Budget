@@ -10,7 +10,7 @@ import { CategoryIcon } from '@/components/senlie/category-icon'
 import { formatMoney } from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { useT } from '@/hooks/use-t'
+import { useT, useLanguage } from '@/hooks/use-t'
 
 export function TransactionDetailSheet() {
   const id = useSenlieUI((s) => s.selectedTransactionId)
@@ -19,6 +19,7 @@ export function TransactionDetailSheet() {
   const setEditingTransactionId = useSenlieUI((s) => s.setEditingTransactionId)
   const haptic = useHaptic()
   const t = useT()
+  const { locale } = useLanguage()
   const { data: home } = useHomeSummary()
   const symbol = home?.user.currencySymbol ?? 'RD$'
 
@@ -118,8 +119,9 @@ export function TransactionDetailSheet() {
   const handleEdit = () => {
     if (!tx) return
     haptic('light')
-    setId(null) // close detail sheet
-    setEditingTransactionId(tx.id) // open add sheet in edit mode
+    // Keep the detail sheet in navigation history underneath the editor.
+    // Android Back / iOS back gesture closes Edit first and reveals Detail.
+    setEditingTransactionId(tx.id)
   }
 
   const isExpense = tx?.type === 'expense'
@@ -133,12 +135,12 @@ export function TransactionDetailSheet() {
 
   return (
     <Drawer open={!!id} onOpenChange={(o) => !o && setId(null)}>
-      <DrawerContent className="max-h-[92vh]">
+      <DrawerContent className="senlie-sheet">
         <DrawerHeader className="pb-0">
           <DrawerTitle className="sr-only">{t('detail.titleSr')}</DrawerTitle>
           <DrawerDescription className="sr-only">{t('detail.descSr')}</DrawerDescription>
         </DrawerHeader>
-        <div className="px-5 pb-[max(env(safe-area-inset-bottom),24px)] pt-2">
+        <div className="senlie-sheet-scroll px-5 pb-[max(env(safe-area-inset-bottom),24px)] pt-2">
           {/* Hero */}
           <div className="flex flex-col items-center py-6">
             {tx?.category ? (
@@ -176,14 +178,14 @@ export function TransactionDetailSheet() {
             </motion.div>
             {tx?.date && (
               <div className="mt-1 text-[13px] text-muted-foreground">
-                {new Date(tx.date).toLocaleDateString('en-US', {
+                {new Date(tx.date).toLocaleDateString(locale, {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric',
                 })}{' '}
                 ·{' '}
-                {new Date(tx.date).toLocaleTimeString('en-US', {
+                {new Date(tx.date).toLocaleTimeString(locale, {
                   hour: 'numeric',
                   minute: '2-digit',
                 })}

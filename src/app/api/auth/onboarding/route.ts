@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       monthlyIncome,
       accounts,
       categories,
+      language,
     } = body
 
     // 1. Update user settings
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
         paySchedule: paySchedule || 'biweekly',
         monthStartDay: monthStartDay || 1,
         onboardingComplete: true,
+        language: language === 'es' ? 'es' : 'en',
       },
     })
 

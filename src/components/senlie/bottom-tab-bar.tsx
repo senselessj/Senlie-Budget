@@ -19,11 +19,29 @@ export function BottomTabBar() {
   const activeTab = useSenlieUI((s) => s.activeTab)
   const setActiveTab = useSenlieUI((s) => s.setActiveTab)
   const setAddSheetOpen = useSenlieUI((s) => s.setAddSheetOpen)
+  const addSheetOpen = useSenlieUI((s) => s.addSheetOpen)
+  const editingTransactionId = useSenlieUI((s) => s.editingTransactionId)
+  const settingsOpen = useSenlieUI((s) => s.settingsOpen)
+  const addEntityType = useSenlieUI((s) => s.addEntityType)
+  const selectedTransactionId = useSenlieUI((s) => s.selectedTransactionId)
+  const activityFilterOpen = useSenlieUI((s) => s.activityFilterOpen)
   const t = useT()
   const haptic = useHaptic()
 
+  // Primary navigation should never sit on top of a modal sheet. Besides
+  // looking wrong, this used to physically block the bottom CTA on phones.
+  const modalOpen =
+    addSheetOpen ||
+    Boolean(editingTransactionId) ||
+    settingsOpen ||
+    Boolean(addEntityType) ||
+    Boolean(selectedTransactionId) ||
+    activityFilterOpen
+
+  if (modalOpen) return null
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(env(safe-area-inset-bottom),14px)]">
+    <div data-senlie-tabbar className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(env(safe-area-inset-bottom),14px)] transition-all duration-200">
       <div className="pointer-events-auto relative">
         {/* Floating + button — centered above the tab bar */}
         <motion.button
@@ -39,7 +57,7 @@ export function BottomTabBar() {
           transition={{ type: 'spring', stiffness: 400, damping: 18 }}
           className="absolute left-1/2 -top-7 z-10 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full text-white shadow-float"
           style={{ backgroundColor: 'var(--senlie)' }}
-          aria-label="Add transaction"
+          aria-label={t('accessibility.addTransaction')}
         >
           <Plus size={26} strokeWidth={2.6} />
         </motion.button>
@@ -51,7 +69,7 @@ export function BottomTabBar() {
             width: 'min(94vw, 420px)',
             height: 58,
           }}
-          aria-label="Primary"
+          aria-label={t('accessibility.primaryNavigation')}
         >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key

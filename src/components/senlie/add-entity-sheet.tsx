@@ -202,7 +202,7 @@ export function AddEntitySheet() {
 
   return (
     <Drawer open={open} onOpenChange={(o) => !o && close()}>
-      <DrawerContent className="max-h-[94vh]">
+      <DrawerContent className="senlie-sheet">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center text-[17px] font-semibold tracking-tight">
             {type ? t(titleKeys[type]) : ''}
@@ -212,7 +212,7 @@ export function AddEntitySheet() {
           </DrawerDescription>
         </DrawerHeader>
 
-        <ScrollArea className="max-h-[70vh]" type="always">
+        <ScrollArea className="min-h-0 flex-1" type="always">
           <div className="space-y-4 px-5 pb-4">
             {/* Name field — universal */}
             <div>
@@ -311,6 +311,9 @@ export function AddEntitySheet() {
                     className="h-12 rounded-[14px] border-0 bg-card pl-10 text-[16px] tnum"
                   />
                 </div>
+                <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground/75">
+                  {t('entity.openingBalanceHint')}
+                </p>
               </div>
             )}
 
@@ -323,7 +326,7 @@ export function AddEntitySheet() {
                 <Input
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
-                  placeholder="e.g. Banco Popular"
+                  placeholder={t('entity.placeholderInstitution')}
                   className="h-12 rounded-[14px] border-0 bg-card text-[16px]"
                 />
               </div>
@@ -410,7 +413,7 @@ export function AddEntitySheet() {
                   <Input
                     value={merchant}
                     onChange={(e) => setMerchant(e.target.value)}
-                    placeholder="e.g. Netflix"
+                    placeholder={t('entity.placeholderRecurring')}
                     className="h-12 rounded-[14px] border-0 bg-card text-[16px]"
                   />
                 </div>
@@ -571,7 +574,7 @@ export function AddEntitySheet() {
           </div>
         </ScrollArea>
 
-        <DrawerFooter className="px-5 pb-[max(env(safe-area-inset-bottom),16px)] pt-2">
+        <DrawerFooter className="senlie-sheet-footer px-5 pt-2">
           <button
             onClick={handleSave}
             disabled={!canSave() || saving}
@@ -601,6 +604,7 @@ function PickerField({
   iconRenderer: 'category' | 'account'
   placeholder?: string
 }) {
+  const t = useT()
   const selected = options.find((o) => o.id === value)
   return (
     <div>
@@ -620,7 +624,7 @@ function PickerField({
               </div>
             )}
             <span className={cn('flex-1 text-[15px] font-medium', !selected && 'text-muted-foreground')}>
-              {selected ? selected.label : (placeholder ?? 'Select')}
+              {selected ? selected.label : (placeholder ?? t('add.select'))}
             </span>
           </button>
         </PopoverTrigger>

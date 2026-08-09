@@ -326,7 +326,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
 
   if (schedule === 'custom') {
     const nextIncome = await db.recurringRule.findFirst({
-      where: { userId: user.id, transactionType: 'income', isActive: true, nextDate: { gte: todayStart } },
+      where: { userId: user.id, transactionType: 'income', isActive: true, isPaySchedule: true, nextDate: { gte: todayStart } },
       orderBy: { nextDate: 'asc' },
     })
     if (nextIncome) {
@@ -342,7 +342,8 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     else if (schedule === 'biweekly') nextPayDate.setDate(nextPayDate.getDate() + 14)
     else nextPayDate.setMonth(nextPayDate.getMonth() + 1)
 
-    if (schedule === 'weekly') nextPayAmount = budget.incomeTarget / 4
+    if (Number(user.payAmount) > 0) nextPayAmount = Number(user.payAmount)
+    else if (schedule === 'weekly') nextPayAmount = budget.incomeTarget / 4
     else if (schedule === 'biweekly') nextPayAmount = budget.incomeTarget / 2
   }
 

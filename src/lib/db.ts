@@ -31,7 +31,7 @@ const MODELS: Record<ModelName, ModelConfig> = {
     columns: {
       id: 'id', email: 'email', name: 'name', avatarColor: 'avatarColor', avatarUrl: 'avatar_url', pronouns: 'pronouns', birthDate: 'birth_date', walkthroughCompleted: 'walkthrough_completed',
       currencyCode: 'currencyCode', currencySymbol: 'currencySymbol', timezone: 'timezone',
-      monthStartDay: 'monthStartDay', hideBalances: 'hideBalances', paySchedule: 'paySchedule', payAnchorDate: 'pay_anchor_date',
+      monthStartDay: 'monthStartDay', hideBalances: 'hideBalances', paySchedule: 'paySchedule', payAnchorDate: 'pay_anchor_date', payAmount: 'pay_amount',
       language: 'language', onboardingComplete: 'onboarding_complete', termsAccepted: 'terms_accepted',
       termsVersion: 'terms_version', termsAcceptedAt: 'terms_accepted_at', createdAt: 'created_at', updatedAt: 'updated_at',
     },
@@ -93,7 +93,7 @@ const MODELS: Record<ModelName, ModelConfig> = {
     columns: {
       id: 'id', userId: 'user_id', transactionType: 'transaction_type', amount: 'amount', frequency: 'frequency',
       startDate: 'start_date', nextDate: 'next_date', categoryId: 'category_id', accountId: 'account_id',
-      merchantId: 'merchant_id', merchantName: 'merchant_name', description: 'description', isActive: 'is_active',
+      merchantId: 'merchant_id', merchantName: 'merchant_name', description: 'description', isActive: 'is_active', isPaySchedule: 'is_pay_schedule',
       createdAt: 'created_at', updatedAt: 'updated_at',
     },
     dates: ['startDate', 'nextDate', 'createdAt', 'updatedAt'],

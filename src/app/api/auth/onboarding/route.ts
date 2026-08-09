@@ -28,12 +28,21 @@ export async function POST(req: NextRequest) {
 
     // 1. Update user settings
     const symbols: Record<string, string> = { DOP: 'RD$', USD: '$', EUR: '\u20ac' }
+    const enteredMonthlyIncome = parseFloat(monthlyIncome) || 0
+    const regularPayAmount = paySchedule === 'weekly'
+      ? enteredMonthlyIncome / 4
+      : paySchedule === 'biweekly'
+        ? enteredMonthlyIncome / 2
+        : paySchedule === 'monthly'
+          ? enteredMonthlyIncome
+          : null
     await db.user.update({
       where: { id: user.id },
       data: {
         currencyCode: currencyCode || 'DOP',
         currencySymbol: symbols[currencyCode] || currencySymbol || 'RD$',
         paySchedule: paySchedule || 'biweekly',
+        payAmount: regularPayAmount,
         monthStartDay: monthStartDay || 1,
         onboardingComplete: true,
         language: language === 'es' ? 'es' : 'en',
@@ -156,6 +165,7 @@ export async function POST(req: NextRequest) {
             merchantName: 'Paycheck',
             description: `Income (day ${day} of month)`,
             isActive: true,
+            isPaySchedule: true,
           },
         })
       }

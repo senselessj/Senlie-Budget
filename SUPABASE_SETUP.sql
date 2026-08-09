@@ -55,6 +55,7 @@ alter table public.users add column if not exists pronouns text;
 alter table public.users add column if not exists birth_date date;
 alter table public.users add column if not exists walkthrough_completed boolean not null default false;
 alter table public.users add column if not exists pay_anchor_date date;
+alter table public.users add column if not exists pay_amount double precision;
 
 create table if not exists public.accounts (
   id text primary key default gen_random_uuid()::text,
@@ -122,6 +123,7 @@ create table if not exists public.recurring_rules (
   merchant_name text,
   description text,
   is_active boolean not null default true,
+  is_pay_schedule boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -183,6 +185,15 @@ create index if not exists transactions_category_id_idx on public.transactions(c
 create index if not exists transactions_date_idx on public.transactions(date);
 create index if not exists transactions_type_idx on public.transactions(type);
 create index if not exists budgets_user_id_idx on public.budgets(user_id);
+alter table public.recurring_rules add column if not exists is_pay_schedule boolean not null default false;
+
+-- Backfill Senlie-created customized paydays from older versions.
+update public.recurring_rules
+set is_pay_schedule = true
+where transaction_type = 'income'
+  and merchant_name = 'Paycheck'
+  and description like 'Income (day % of month)';
+
 create index if not exists recurring_rules_user_id_idx on public.recurring_rules(user_id);
 create index if not exists recurring_rules_next_date_idx on public.recurring_rules(next_date);
 create index if not exists goals_user_id_idx on public.goals(user_id);

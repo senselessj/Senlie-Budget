@@ -39,6 +39,8 @@ create table if not exists public.users (
   "monthStartDay" integer not null default 1 check ("monthStartDay" between 1 and 31),
   "hideBalances" boolean not null default false,
   "paySchedule" text not null default 'biweekly',
+  pay_anchor_date date,
+  pay_amount double precision,
   language text not null default 'en',
   onboarding_complete boolean not null default false,
   terms_accepted boolean not null default false,
@@ -122,6 +124,7 @@ create table if not exists public.recurring_rules (
   merchant_name text,
   description text,
   is_active boolean not null default true,
+  is_pay_schedule boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

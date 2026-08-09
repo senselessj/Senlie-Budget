@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Plus, Check, Download, FileJson, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Check, Download, FileJson, FileText, Trash2, CalendarClock } from 'lucide-react'
 import { useSenlieUI } from '@/lib/store'
 import {
   useHomeSummary,
@@ -423,67 +423,144 @@ export function PayScheduleView() {
   const t = useT()
   const { locale } = useLanguage()
   const { data: home } = useHomeSummary()
-  const current = home?.paySchedule.schedule ?? 'biweekly'
-  const [dateDraft, setDateDraft] = React.useState('')
-  const [savingDate, setSavingDate] = React.useState(false)
+
+  type Schedule = 'monthly' | 'biweekly' | 'weekly' | 'custom'
+  type DraftPayment = { id: string; day: string; amount: string }
+
+  const current = (home?.paySchedule.schedule ?? 'biweekly') as Schedule
+  const [scheduleDraft, setScheduleDraft] = React.useState<Schedule>(current)
+  const [anchorDate, setAnchorDate] = React.useState('')
+  const [amount, setAmount] = React.useState('')
+  const [customPayments, setCustomPayments] = React.useState<DraftPayment[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
+
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), [])
 
   React.useEffect(() => {
-    const value = home?.paySchedule.nextPayDate
-    if (value) setDateDraft(value.slice(0, 10))
-  }, [home?.paySchedule.nextPayDate])
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/budget/pay-schedule', { cache: 'no-store' })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error || 'Failed')
+        if (cancelled) return
 
-  const saveNextPayDate = async () => {
-    if (!dateDraft || savingDate) return
-    haptic('medium')
-    setSavingDate(true)
-    try {
-      const res = await fetch('/api/budget/pay-schedule', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nextPayDate: dateDraft }),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.error || 'Failed')
-      toast.success(t('sv.paymentDateUpdated'))
-      bumpData()
-    } catch (e: any) {
-      toast.error(e?.message || t('sv.couldntChangePaymentDate'))
-    } finally {
-      setSavingDate(false)
+        const nextDate = home?.paySchedule.nextPayDate?.slice(0, 10) || today
+        setScheduleDraft((body.paySchedule || current) as Schedule)
+        setAnchorDate(body.anchorDate || nextDate)
+        setAmount(String(body.amount ?? home?.paySchedule.nextPayAmount ?? ''))
+        setCustomPayments(
+          Array.isArray(body.customPayments)
+            ? body.customPayments.map((p: any) => ({
+                id: String(p.id || `pay-${Date.now()}-${Math.random()}`),
+                day: String(p.day ?? ''),
+                amount: String(p.amount ?? ''),
+              }))
+            : []
+        )
+      } catch (e: any) {
+        if (!cancelled) toast.error(e?.message || t('sv.couldntLoadPaySchedule'))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }
+    load()
+    return () => { cancelled = true }
+  }, [current, home?.paySchedule.nextPayAmount, home?.paySchedule.nextPayDate, t, today])
 
-  const options: { key: string; labelKey: string; descKey: string }[] = [
+  const options: { key: Schedule; labelKey: string; descKey: string }[] = [
     { key: 'monthly', labelKey: 'sv.monthly', descKey: 'sv.onceMonth' },
     { key: 'biweekly', labelKey: 'sv.biweekly', descKey: 'sv.everyTwoWeeks' },
     { key: 'weekly', labelKey: 'sv.weekly', descKey: 'sv.everyWeek' },
     { key: 'custom', labelKey: 'onb.customized', descKey: 'onb.customizedDesc' },
   ]
 
+  const addPayment = () => {
+    haptic('light')
+    setCustomPayments((items) => [
+      ...items,
+      { id: `pay-${Date.now()}-${items.length}`, day: '', amount: '' },
+    ])
+  }
+
+  const updatePayment = (id: string, patch: Partial<DraftPayment>) => {
+    setCustomPayments((items) => items.map((p) => p.id === id ? { ...p, ...patch } : p))
+  }
+
+  const removePayment = (id: string) => {
+    haptic('light')
+    setCustomPayments((items) => items.filter((p) => p.id !== id))
+  }
+
+  const chooseSchedule = (next: Schedule) => {
+    haptic('light')
+    setScheduleDraft(next)
+    if (next === 'custom' && customPayments.length === 0) {
+      setCustomPayments([{ id: `pay-${Date.now()}`, day: '', amount: amount || '' }])
+    }
+  }
+
+  const regularValid = Boolean(anchorDate) && Number(amount) > 0
+  const customValid = customPayments.length > 0 && customPayments.every((p) => {
+    const day = Number(p.day)
+    return Number.isInteger(day) && day >= 1 && day <= 31 && Number(p.amount) > 0
+  })
+  const canSave = scheduleDraft === 'custom' ? customValid : regularValid
+
+  const save = async () => {
+    if (!canSave || saving) return
+    haptic('medium')
+    setSaving(true)
+    try {
+      const payload = scheduleDraft === 'custom'
+        ? {
+            paySchedule: 'custom',
+            customPayments: customPayments.map((p) => ({ day: Number(p.day), amount: Number(p.amount) })),
+          }
+        : {
+            paySchedule: scheduleDraft,
+            anchorDate,
+            amount: Number(amount),
+          }
+
+      const res = await fetch('/api/budget/pay-schedule', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Failed')
+      toast.success(t('sv.payScheduleSaved'))
+      bumpData()
+    } catch (e: any) {
+      toast.error(e?.message || t('sv.couldntSavePaySchedule'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cadenceHint = scheduleDraft === 'weekly'
+    ? t('sv.weeklyAnchorHint')
+    : scheduleDraft === 'biweekly'
+      ? t('sv.biweeklyAnchorHint')
+      : t('sv.monthlyAnchorHint')
+
   return (
     <DetailView title={t('settings.paySchedule')} subtitle={t('sv.howYouGetPaid')}>
-      <div className="overflow-hidden rounded-[16px] bg-card">
+      <div className="rounded-[14px] bg-muted/45 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
+        {t('sv.payScheduleEditorHint')}
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-[16px] bg-card">
         {options.map((opt, i) => {
-          const isActive = opt.key === current
+          const isActive = opt.key === scheduleDraft
           return (
             <button
               key={opt.key}
-              onClick={async () => {
-                haptic('medium')
-                if (isActive) return
-                try {
-                  const res = await fetch('/api/budget/user', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paySchedule: opt.key }),
-                  })
-                  if (!res.ok) throw new Error('Failed')
-                  toast.success(t('sv.payScheduleSetTo', { label: t(opt.labelKey) }))
-                  bumpData()
-                } catch {
-                  toast.error(t('sv.couldntChangePaySchedule'))
-                }
-              }}
+              type="button"
+              onClick={() => chooseSchedule(opt.key)}
               className={cn(
                 'flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-muted/50',
                 i < options.length - 1 && 'border-b border-border/40'
@@ -498,53 +575,160 @@ export function PayScheduleView() {
           )
         })}
       </div>
+
       {home?.paySchedule && (
         <div className="mt-4 rounded-[16px] bg-card p-4">
-          <div className="text-[13px] text-muted-foreground">{t('sv.nextPayday')}</div>
-          <div className="mt-1 text-[17px] font-semibold">
-            {new Date(home.paySchedule.nextPayDate).toLocaleDateString(locale, {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            })}
+          <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            {t('sv.currentNextPayday')}
           </div>
-          <div className="mt-0.5 text-[13px] text-muted-foreground tnum">
-            {t('sv.expected')}{' '}
-            {formatMoney(home.paySchedule.nextPayAmount, {
-              symbol: home.user.currencySymbol,
-              decimalPlaces: 0,
-            })}
-          </div>
-
-          <div className="mt-4 border-t border-border/50 pt-4">
-            <label htmlFor="senlie-next-pay-date" className="text-[13px] font-medium">
-              {t('sv.changeNextPaymentDate')}
-            </label>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-              {current === 'custom' ? t('sv.customPaymentDateHint') : t('sv.paymentDateHint')}
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                id="senlie-next-pay-date"
-                type="date"
-                value={dateDraft}
-                min={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setDateDraft(e.target.value)}
-                className="h-11 min-w-0 flex-1 rounded-[12px] border-0 bg-muted px-3 text-[14px] font-medium text-foreground outline-none focus:ring-2 focus:ring-[var(--senlie)]/30"
-              />
-              <button
-                type="button"
-                disabled={!dateDraft || savingDate}
-                onClick={saveNextPayDate}
-                className="h-11 shrink-0 rounded-[12px] px-4 text-[14px] font-semibold text-white transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ backgroundColor: 'var(--senlie)' }}
-              >
-                {savingDate ? t('sv.savingPaymentDate') : t('sv.savePaymentDate')}
-              </button>
+          <div className="mt-1 flex items-end justify-between gap-3">
+            <div>
+              <div className="text-[17px] font-semibold">
+                {new Date(home.paySchedule.nextPayDate).toLocaleDateString(locale, {
+                  weekday: 'short', month: 'short', day: 'numeric',
+                })}
+              </div>
+              <div className="mt-0.5 text-[13px] text-muted-foreground tnum">
+                {t('sv.expected')}{' '}
+                {formatMoney(home.paySchedule.nextPayAmount, {
+                  symbol: home.user.currencySymbol,
+                  decimalPlaces: 0,
+                })}
+              </div>
             </div>
+            <CalendarClock size={22} className="text-muted-foreground" />
           </div>
         </div>
       )}
+
+      <div className="mt-4 rounded-[16px] bg-card p-4 shadow-card">
+        <div className="text-[15px] font-semibold">{t('sv.editYourPaydays')}</div>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+          {scheduleDraft === 'custom' ? t('sv.customPaydaysEditorHint') : cadenceHint}
+        </p>
+
+        {loading ? (
+          <div className="py-8 text-center text-[13px] text-muted-foreground">{t('sv.loadingPaySchedule')}</div>
+        ) : scheduleDraft === 'custom' ? (
+          <div className="mt-4 space-y-2">
+            {customPayments.map((payment, index) => (
+              <div key={payment.id} className="flex items-center gap-2 rounded-[14px] bg-muted/55 p-2.5">
+                <div className="min-w-0 flex-1">
+                  <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                    {t('sv.paydayNumber', { number: index + 1 })}
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      aria-label={t('sv.dayOfMonth')}
+                      value={payment.day}
+                      onChange={(e) => updatePayment(payment.id, { day: e.target.value })}
+                      className="h-11 w-[104px] rounded-[12px] border-0 bg-background px-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[var(--senlie)]/30"
+                    >
+                      <option value="">{t('sv.day')}</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <option key={day} value={day}>{t('sv.dayValue', { day })}</option>
+                      ))}
+                    </select>
+                    <div className="relative min-w-0 flex-1">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground">
+                        {home?.user.currencySymbol ?? 'RD$'}
+                      </span>
+                      <input
+                        inputMode="decimal"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        value={payment.amount}
+                        onChange={(e) => updatePayment(payment.id, { amount: e.target.value })}
+                        className="h-11 w-full rounded-[12px] border-0 bg-background pl-11 pr-3 text-right text-[15px] font-semibold tnum outline-none focus:ring-2 focus:ring-[var(--senlie)]/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removePayment(payment.id)}
+                  aria-label={t('sv.removePayday')}
+                  className="mt-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-muted-foreground transition-colors active:bg-background"
+                >
+                  <Trash2 size={17} />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addPayment}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-dashed border-border text-[13px] font-medium text-muted-foreground active:scale-[0.99]"
+            >
+              <Plus size={16} />
+              {t('sv.addPayday')}
+            </button>
+
+            {customPayments.length > 0 && (
+              <div className="flex items-center justify-between rounded-[12px] bg-[var(--senlie-soft)] px-3 py-2.5">
+                <span className="text-[12px] font-medium" style={{ color: 'var(--senlie)' }}>
+                  {t('sv.monthlyExpectedTotal')}
+                </span>
+                <span className="text-[14px] font-semibold tnum" style={{ color: 'var(--senlie)' }}>
+                  {formatMoney(
+                    customPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+                    { symbol: home?.user.currencySymbol ?? 'RD$', decimalPlaces: 0 }
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label htmlFor="senlie-pay-anchor" className="text-[12px] font-medium text-muted-foreground">
+                {t('sv.nextPaydayDate')}
+              </label>
+              <input
+                id="senlie-pay-anchor"
+                type="date"
+                value={anchorDate}
+                min={today}
+                onChange={(e) => setAnchorDate(e.target.value)}
+                className="mt-1.5 h-12 w-full rounded-[12px] border-0 bg-muted px-3 text-[15px] font-medium text-foreground outline-none focus:ring-2 focus:ring-[var(--senlie)]/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="senlie-pay-amount" className="text-[12px] font-medium text-muted-foreground">
+                {t('sv.amountPerPayday')}
+              </label>
+              <div className="relative mt-1.5">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">
+                  {home?.user.currencySymbol ?? 'RD$'}
+                </span>
+                <input
+                  id="senlie-pay-amount"
+                  inputMode="decimal"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="h-12 w-full rounded-[12px] border-0 bg-muted pl-12 pr-3 text-right text-[18px] font-semibold tnum outline-none focus:ring-2 focus:ring-[var(--senlie)]/30"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        disabled={!canSave || saving || loading}
+        onClick={save}
+        className="mt-4 h-12 w-full rounded-[14px] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+        style={{ backgroundColor: 'var(--senlie)' }}
+      >
+        {saving ? t('sv.savingPaySchedule') : t('sv.savePaySchedule')}
+      </button>
     </DetailView>
   )
 }

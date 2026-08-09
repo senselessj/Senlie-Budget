@@ -1,6 +1,6 @@
 {
   "name": "senlie-budget",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "android:init": "node scripts/build-android-twa.mjs",
     "android:build": "cd android-twa && npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap build",
-    "android:prepare": "node scripts/prepare-android-project.mjs"
+    "android:prepare": "node scripts/prepare-android-project.mjs",
+    "android:finalize": "node scripts/finalize-android-project.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

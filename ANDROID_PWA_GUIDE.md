@@ -101,3 +101,25 @@ If v0.4.5 is already deployed and both manifest preflight checks pass, this spec
 ## Play Billing minimum Android version
 
 When Play Billing is enabled, Android Browser Helper Billing requires API 23 or newer. Senlie v0.4.7 automatically sets `minSdkVersion` to 23 in `android-twa/twa-manifest.json` and regenerates the Bubblewrap project before building. Do not use `tools:overrideLibrary` to bypass this requirement; that can allow installation on Android versions where the billing library may fail at runtime.
+
+
+## v0.6.1: Google Play Protect says “app was designed for an older version of Android”
+
+That warning is produced by the native Android wrapper, not by the Senlie web app. Updating Vercel alone cannot change an APK's target API level.
+
+v0.6.1 finalizes every generated Bubblewrap project with:
+
+- `compileSdkVersion 36`
+- `targetSdkVersion 36`
+- `minSdkVersion 23` when Play Billing is enabled
+
+The finalize step runs **after** `bubblewrap update`, because Bubblewrap regenerates `app/build.gradle` and would otherwise overwrite a manual SDK edit.
+
+After updating to v0.6.1:
+
+1. Keep your existing signing keystore.
+2. Run `BUILD_ANDROID_APK.bat` again.
+3. Install the newly generated `android-twa/app-release-signed.apk`.
+4. If Android refuses to update an older test build because it was signed with a different test key, uninstall that old test build once and install the new APK.
+
+Do not expect an APK you already built to change just because the PWA was redeployed. The APK itself must be rebuilt.

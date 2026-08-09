@@ -31,11 +31,11 @@ const MODELS: Record<ModelName, ModelConfig> = {
     columns: {
       id: 'id', email: 'email', name: 'name', avatarColor: 'avatarColor', avatarUrl: 'avatar_url', pronouns: 'pronouns', birthDate: 'birth_date', walkthroughCompleted: 'walkthrough_completed',
       currencyCode: 'currencyCode', currencySymbol: 'currencySymbol', timezone: 'timezone',
-      monthStartDay: 'monthStartDay', hideBalances: 'hideBalances', paySchedule: 'paySchedule',
+      monthStartDay: 'monthStartDay', hideBalances: 'hideBalances', paySchedule: 'paySchedule', payAnchorDate: 'pay_anchor_date',
       language: 'language', onboardingComplete: 'onboarding_complete', termsAccepted: 'terms_accepted',
       termsVersion: 'terms_version', termsAcceptedAt: 'terms_accepted_at', createdAt: 'created_at', updatedAt: 'updated_at',
     },
-    dates: ['birthDate', 'termsAcceptedAt', 'createdAt', 'updatedAt'],
+    dates: ['birthDate', 'payAnchorDate', 'termsAcceptedAt', 'createdAt', 'updatedAt'],
   },
   account: {
     table: 'accounts',

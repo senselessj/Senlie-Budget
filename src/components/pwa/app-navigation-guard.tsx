@@ -19,6 +19,7 @@ function rootSnapshot(snapshot: SenlieNavigationSnapshot): SenlieNavigationSnaps
     addSheetOpen: false,
     editingTransactionId: null,
     editingGoalId: null,
+    editingCategoryId: null,
     settingsOpen: false,
     settingsView: null,
     addEntityType: null,

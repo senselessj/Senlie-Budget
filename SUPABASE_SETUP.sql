@@ -54,6 +54,7 @@ alter table public.users add column if not exists avatar_url text;
 alter table public.users add column if not exists pronouns text;
 alter table public.users add column if not exists birth_date date;
 alter table public.users add column if not exists walkthrough_completed boolean not null default false;
+alter table public.users add column if not exists pay_anchor_date date;
 
 create table if not exists public.accounts (
   id text primary key default gen_random_uuid()::text,

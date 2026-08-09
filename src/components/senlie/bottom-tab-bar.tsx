@@ -22,6 +22,7 @@ export function BottomTabBar() {
   const addSheetOpen = useSenlieUI((s) => s.addSheetOpen)
   const editingTransactionId = useSenlieUI((s) => s.editingTransactionId)
   const editingGoalId = useSenlieUI((s) => s.editingGoalId)
+  const editingCategoryId = useSenlieUI((s) => s.editingCategoryId)
   const settingsOpen = useSenlieUI((s) => s.settingsOpen)
   const addEntityType = useSenlieUI((s) => s.addEntityType)
   const selectedTransactionId = useSenlieUI((s) => s.selectedTransactionId)
@@ -35,6 +36,7 @@ export function BottomTabBar() {
     addSheetOpen ||
     Boolean(editingTransactionId) ||
     Boolean(editingGoalId) ||
+    Boolean(editingCategoryId) ||
     settingsOpen ||
     Boolean(addEntityType) ||
     Boolean(selectedTransactionId) ||

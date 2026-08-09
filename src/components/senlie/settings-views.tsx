@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, Plus, Check, Download, FileJson, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Check, Download, FileJson, FileText } from 'lucide-react'
 import { useSenlieUI } from '@/lib/store'
 import {
   useHomeSummary,
@@ -101,15 +101,24 @@ export function AccountsView() {
 export function CategoriesView() {
   const { data: pickers } = useAccountsAndCategories()
   const haptic = useHaptic()
+  const setEditingCategoryId = useSenlieUI((s) => s.setEditingCategoryId)
   const t = useT()
   const categories = pickers?.categories ?? []
   const expenses = categories.filter((c) => c.type === 'expense')
   const incomes = categories.filter((c) => c.type === 'income')
 
+  const editCategory = (id: string) => {
+    haptic('light')
+    setEditingCategoryId(id)
+  }
+
   return (
     <DetailView title={t('sv.categories')} subtitle={t('settings.categoriesValue', { count: categories.length })}>
-      <CategoryGroup title={t('sv.expenses')} items={expenses} haptic={haptic} />
-      <CategoryGroup title={t('sv.income')} items={incomes} haptic={haptic} />
+      <div className="rounded-[14px] bg-muted/45 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
+        {t('category.tapToEdit')}
+      </div>
+      <CategoryGroup title={t('sv.expenses')} items={expenses} onEdit={editCategory} />
+      <CategoryGroup title={t('sv.income')} items={incomes} onEdit={editCategory} />
       <AddButton label={t('sv.addCategory')} type="category" />
     </DetailView>
   )
@@ -118,12 +127,13 @@ export function CategoriesView() {
 function CategoryGroup({
   title,
   items,
-  haptic,
+  onEdit,
 }: {
   title: string
-  items: Array<{ id: string; name: string; icon: string; color: string; type: string }>
-  haptic: (i: 'light' | 'medium' | 'success' | 'warning') => void
+  items: Array<{ id: string; name: string; icon: string; color: string; type: string; isSystem?: boolean }>
+  onEdit: (id: string) => void
 }) {
+  const t = useT()
   return (
     <div>
       <div className="mb-2 mt-4 px-1 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -133,14 +143,21 @@ function CategoryGroup({
         {items.map((c, i) => (
           <button
             key={c.id}
-            onClick={() => haptic('light')}
+            type="button"
+            onClick={() => onEdit(c.id)}
             className={cn(
               'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-muted/50',
               i < items.length - 1 && 'border-b border-border/40'
             )}
           >
             <CategoryIcon name={c.icon} color={c.color} size={36} iconSize={18} />
-            <span className="flex-1 text-[15px] font-medium">{c.name}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-medium">{c.name}</div>
+              {c.isSystem ? (
+                <div className="text-[11px] text-muted-foreground">{t('category.default')}</div>
+              ) : null}
+            </div>
+            <ChevronRight size={17} className="shrink-0 text-muted-foreground" />
           </button>
         ))}
       </div>
@@ -407,6 +424,34 @@ export function PayScheduleView() {
   const { locale } = useLanguage()
   const { data: home } = useHomeSummary()
   const current = home?.paySchedule.schedule ?? 'biweekly'
+  const [dateDraft, setDateDraft] = React.useState('')
+  const [savingDate, setSavingDate] = React.useState(false)
+
+  React.useEffect(() => {
+    const value = home?.paySchedule.nextPayDate
+    if (value) setDateDraft(value.slice(0, 10))
+  }, [home?.paySchedule.nextPayDate])
+
+  const saveNextPayDate = async () => {
+    if (!dateDraft || savingDate) return
+    haptic('medium')
+    setSavingDate(true)
+    try {
+      const res = await fetch('/api/budget/pay-schedule', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nextPayDate: dateDraft }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Failed')
+      toast.success(t('sv.paymentDateUpdated'))
+      bumpData()
+    } catch (e: any) {
+      toast.error(e?.message || t('sv.couldntChangePaymentDate'))
+    } finally {
+      setSavingDate(false)
+    }
+  }
 
   const options: { key: string; labelKey: string; descKey: string }[] = [
     { key: 'monthly', labelKey: 'sv.monthly', descKey: 'sv.onceMonth' },
@@ -469,6 +514,34 @@ export function PayScheduleView() {
               symbol: home.user.currencySymbol,
               decimalPlaces: 0,
             })}
+          </div>
+
+          <div className="mt-4 border-t border-border/50 pt-4">
+            <label htmlFor="senlie-next-pay-date" className="text-[13px] font-medium">
+              {t('sv.changeNextPaymentDate')}
+            </label>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+              {current === 'custom' ? t('sv.customPaymentDateHint') : t('sv.paymentDateHint')}
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                id="senlie-next-pay-date"
+                type="date"
+                value={dateDraft}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDateDraft(e.target.value)}
+                className="h-11 min-w-0 flex-1 rounded-[12px] border-0 bg-muted px-3 text-[14px] font-medium text-foreground outline-none focus:ring-2 focus:ring-[var(--senlie)]/30"
+              />
+              <button
+                type="button"
+                disabled={!dateDraft || savingDate}
+                onClick={saveNextPayDate}
+                className="h-11 shrink-0 rounded-[12px] px-4 text-[14px] font-semibold text-white transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: 'var(--senlie)' }}
+              >
+                {savingDate ? t('sv.savingPaymentDate') : t('sv.savePaymentDate')}
+              </button>
+            </div>
           </div>
         </div>
       )}

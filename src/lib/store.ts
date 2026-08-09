@@ -31,6 +31,7 @@ export interface SenlieNavigationSnapshot {
   addSheetOpen: boolean
   editingTransactionId: string | null
   editingGoalId: string | null
+  editingCategoryId: string | null
   settingsOpen: boolean
   settingsView: SettingsView
   addEntityType: AddEntityType | null
@@ -51,6 +52,7 @@ export function makeNavigationSnapshot(state: SenlieUIState): SenlieNavigationSn
     addSheetOpen: state.addSheetOpen,
     editingTransactionId: state.editingTransactionId,
     editingGoalId: state.editingGoalId,
+    editingCategoryId: state.editingCategoryId,
     settingsOpen: state.settingsOpen,
     settingsView: state.settingsView,
     addEntityType: state.addEntityType,
@@ -96,6 +98,9 @@ interface SenlieUIState {
 
   editingGoalId: string | null
   setEditingGoalId: (id: string | null) => void
+
+  editingCategoryId: string | null
+  setEditingCategoryId: (id: string | null) => void
 
   settingsOpen: boolean
   setSettingsOpen: (v: boolean) => void
@@ -191,6 +196,18 @@ export const useSenlieUI = create<SenlieUIState>()(
         }
       },
 
+      editingCategoryId: null,
+      setEditingCategoryId: (id) => {
+        const current = get().editingCategoryId
+        if (id === current) return
+        if (id) {
+          set({ editingCategoryId: id })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ editingCategoryId: null }))
+        }
+      },
+
       settingsOpen: false,
       setSettingsOpen: (v) => {
         const state = get()
@@ -274,6 +291,7 @@ export const useSenlieUI = create<SenlieUIState>()(
           addSheetOpen: snapshot.addSheetOpen,
           editingTransactionId: snapshot.editingTransactionId,
           editingGoalId: snapshot.editingGoalId,
+          editingCategoryId: snapshot.editingCategoryId ?? null,
           settingsOpen: snapshot.settingsOpen,
           settingsView: snapshot.settingsView,
           addEntityType: snapshot.addEntityType,

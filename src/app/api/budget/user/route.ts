@@ -33,6 +33,20 @@ export async function PATCH(req: NextRequest) {
       if (symbols[body.currencyCode]) allowed.currencySymbol = symbols[body.currencyCode]
     }
     if (body.paySchedule !== undefined) allowed.paySchedule = body.paySchedule
+    if (body.payAnchorDate !== undefined) {
+      if (body.payAnchorDate === null || body.payAnchorDate === '') allowed.payAnchorDate = null
+      else {
+        const value = String(body.payAnchorDate)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          return NextResponse.json({ error: 'Invalid payment date' }, { status: 400 })
+        }
+        const parsed = new Date(`${value}T12:00:00Z`)
+        if (Number.isNaN(parsed.getTime())) {
+          return NextResponse.json({ error: 'Invalid payment date' }, { status: 400 })
+        }
+        allowed.payAnchorDate = parsed
+      }
+    }
     if (body.monthStartDay !== undefined) allowed.monthStartDay = parseInt(body.monthStartDay)
     if (body.hideBalances !== undefined) allowed.hideBalances = body.hideBalances
     if (body.language !== undefined) {

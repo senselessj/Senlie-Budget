@@ -18,6 +18,7 @@ import { SettingsSheet } from '@/components/senlie/settings-sheet'
 import { AddEntitySheet } from '@/components/senlie/add-entity-sheet'
 import { AppNavigationGuard } from '@/components/pwa/app-navigation-guard'
 import { EditGoalSheet } from '@/components/senlie/edit-goal-sheet'
+import { EditCategorySheet } from '@/components/senlie/edit-category-sheet'
 import { BiometricLockGate } from '@/components/senlie/biometric-lock-gate'
 import { AppWalkthrough } from '@/components/senlie/app-walkthrough'
 
@@ -31,6 +32,7 @@ export default function Home() {
   const addSheetOpen = useSenlieUI((s) => s.addSheetOpen)
   const editingTransactionId = useSenlieUI((s) => s.editingTransactionId)
   const editingGoalId = useSenlieUI((s) => s.editingGoalId)
+  const editingCategoryId = useSenlieUI((s) => s.editingCategoryId)
   const settingsOpen = useSenlieUI((s) => s.settingsOpen)
   const addEntityType = useSenlieUI((s) => s.addEntityType)
   const selectedTransactionId = useSenlieUI((s) => s.selectedTransactionId)
@@ -40,6 +42,7 @@ export default function Home() {
     addSheetOpen ||
     editingTransactionId ||
     editingGoalId ||
+    editingCategoryId ||
     settingsOpen ||
     addEntityType ||
     selectedTransactionId ||
@@ -108,6 +111,7 @@ export default function Home() {
       <SettingsSheet />
       <AddEntitySheet />
       <EditGoalSheet />
+      <EditCategorySheet />
     </div>
   )
 }

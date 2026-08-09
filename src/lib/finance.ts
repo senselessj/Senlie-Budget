@@ -290,12 +290,43 @@ export async function getHomeSummary(): Promise<HomeSummary> {
 
   // ----------------- Pay schedule -----------------
   const schedule = user.paySchedule as 'monthly' | 'biweekly' | 'weekly' | 'custom'
+  const todayStart = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate())
   let nextPayDate = new Date(TODAY)
   let nextPayAmount = budget.incomeTarget
 
+  // Regular schedules use the user's chosen next payday as a recurrence anchor.
+  // This makes the calendar reflect an actual payday instead of merely saying
+  // "today + 7/14/30 days" every time the screen is opened.
+  const anchoredNextPayDate = () => {
+    if (!user.payAnchorDate) return null
+
+    const raw = new Date(user.payAnchorDate)
+    const anchorDay = raw.getUTCDate()
+    let candidate = new Date(raw.getUTCFullYear(), raw.getUTCMonth(), raw.getUTCDate(), 9, 0, 0, 0)
+
+    if (schedule === 'weekly' || schedule === 'biweekly') {
+      const step = schedule === 'weekly' ? 7 : 14
+      while (candidate < todayStart) candidate.setDate(candidate.getDate() + step)
+      return candidate
+    }
+
+    if (schedule === 'monthly') {
+      while (candidate < todayStart) {
+        const nextMonth = candidate.getMonth() + 1
+        const year = candidate.getFullYear() + Math.floor(nextMonth / 12)
+        const month = ((nextMonth % 12) + 12) % 12
+        const daysInMonth = new Date(year, month + 1, 0).getDate()
+        candidate = new Date(year, month, Math.min(anchorDay, daysInMonth), 9, 0, 0, 0)
+      }
+      return candidate
+    }
+
+    return null
+  }
+
   if (schedule === 'custom') {
     const nextIncome = await db.recurringRule.findFirst({
-      where: { userId: user.id, transactionType: 'income', isActive: true, nextDate: { gte: TODAY } },
+      where: { userId: user.id, transactionType: 'income', isActive: true, nextDate: { gte: todayStart } },
       orderBy: { nextDate: 'asc' },
     })
     if (nextIncome) {
@@ -304,14 +335,15 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     } else {
       nextPayDate.setMonth(nextPayDate.getMonth() + 1)
     }
-  } else if (schedule === 'weekly') {
-    nextPayDate.setDate(nextPayDate.getDate() + 7)
-    nextPayAmount = budget.incomeTarget / 4
-  } else if (schedule === 'biweekly') {
-    nextPayDate.setDate(nextPayDate.getDate() + 14)
-    nextPayAmount = budget.incomeTarget / 2
   } else {
-    nextPayDate.setMonth(nextPayDate.getMonth() + 1)
+    const anchored = anchoredNextPayDate()
+    if (anchored) nextPayDate = anchored
+    else if (schedule === 'weekly') nextPayDate.setDate(nextPayDate.getDate() + 7)
+    else if (schedule === 'biweekly') nextPayDate.setDate(nextPayDate.getDate() + 14)
+    else nextPayDate.setMonth(nextPayDate.getMonth() + 1)
+
+    if (schedule === 'weekly') nextPayAmount = budget.incomeTarget / 4
+    else if (schedule === 'biweekly') nextPayAmount = budget.incomeTarget / 2
   }
 
   const paySchedule = {
@@ -915,6 +947,7 @@ export async function getCategories(type?: 'expense' | 'income' | 'transfer') {
   })
   return categories.map((category) => ({
     ...category,
+    rawName: category.name,
     name: category.isSystem
       ? localizedSystemCategoryName(category.name, language)
       : category.name,

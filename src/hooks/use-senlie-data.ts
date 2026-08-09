@@ -110,7 +110,16 @@ export function useAccountsAndCategories(type?: 'expense' | 'income' | 'transfer
   const dataVersion = useSenlieUI((s) => s.dataVersion)
   return useQuery<{
     accounts: Array<{ id: string; name: string; type: string; color: string; icon: string; currentBalance: number }>
-    categories: Array<{ id: string; name: string; icon: string; color: string; type: string }>
+    categories: Array<{
+      id: string
+      name: string
+      rawName?: string
+      icon: string
+      color: string
+      type: string
+      isSystem?: boolean
+      sortOrder?: number
+    }>
   }>({
     queryKey: ['senlie', 'pickers', type ?? 'all', dataVersion],
     queryFn: async () => {

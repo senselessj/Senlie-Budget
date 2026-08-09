@@ -4,7 +4,7 @@ cd /d "%~dp0"
 title Senlie Budget - Android Builder
 
 echo.
-echo  Senlie Budget Android Builder v0.6.1
+echo  Senlie Budget Android Builder v0.6.2
 echo  ==================================
 echo.
 set /p SENLIE_APP_URL=Paste your deployed HTTPS Senlie Budget URL: 

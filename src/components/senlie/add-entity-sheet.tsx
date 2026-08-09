@@ -15,25 +15,9 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { formatMoney } from '@/lib/currency'
 import { useT } from '@/hooks/use-t'
+import { CATEGORY_ICONS, GOAL_ICONS, ACCOUNT_ICONS, ENTITY_COLORS } from '@/lib/icon-catalog'
 
-// Icon picker options — Lucide icon names (must be in the whitelist in finance.ts)
-const CATEGORY_ICONS = [
-  'tag', 'shopping-cart', 'utensils', 'car', 'home', 'film', 'shopping-bag',
-  'heart-pulse', 'briefcase', 'laptop', 'wifi', 'phone', 'plug-zap', 'coffee',
-  'pizza', 'bus', 'fuel', 'tv', 'music', 'ticket', 'shirt', 'gift', 'plane',
-  'graduation-cap', 'baby', 'paw-print', 'dumbbell', 'book', 'gamepad-2',
-  'tree-palm', 'sun', 'moon', 'star', 'flame', 'gem', 'crown', 'trophy',
-]
-
-const ACCOUNT_ICONS = [
-  'wallet', 'landmark', 'piggy-bank', 'banknote', 'smartphone', 'credit-card',
-  'building-2', 'safe', 'coins', 'cash',
-]
-
-const CATEGORY_COLORS = [
-  '#5965F3', '#34C759', '#FF9F0A', '#0A84FF', '#AF52DE', '#FF375F',
-  '#64D2FF', '#BF5AF2', '#FF453A', '#30D158', '#FFB340', '#6E6E73',
-]
+const CATEGORY_COLORS = ENTITY_COLORS
 
 const ACCOUNT_TYPES = [
   { key: 'checking', labelKey: 'entity.accountTypeChecking' },
@@ -96,7 +80,7 @@ export function AddEntitySheet() {
   React.useEffect(() => {
     if (type) {
       setName('')
-      setIcon(type === 'account' ? ACCOUNT_ICONS[0] : CATEGORY_ICONS[0])
+      setIcon(type === 'goal' ? GOAL_ICONS[0] : CATEGORY_ICONS[0])
       setColor(CATEGORY_COLORS[0])
       setCatType('expense')
       setAccType('checking')
@@ -515,7 +499,7 @@ export function AddEntitySheet() {
                 </Label>
                 <ScrollArea className="h-[120px] w-full rounded-[14px] bg-card p-3" type="always">
                   <div className="grid grid-cols-7 gap-2">
-                    {(type === 'account' ? ACCOUNT_ICONS : CATEGORY_ICONS).map((ic) => {
+                    {(type === 'account' ? ACCOUNT_ICONS : type === 'goal' ? GOAL_ICONS : CATEGORY_ICONS).map((ic) => {
                       const IconComp = type === 'account' ? AccountIcon : CategoryIcon
                       return (
                         <button

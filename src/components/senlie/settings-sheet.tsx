@@ -41,6 +41,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { ProfileView } from '@/components/senlie/profile-view'
+import { biometricEnabled, disableBiometricUnlock, enableBiometricUnlock, platformBiometricsAvailable } from '@/lib/biometric-lock'
 import { toast } from 'sonner'
 import {
   AccountsView,
@@ -98,6 +100,7 @@ export function SettingsSheet() {
               {settingsView === 'export' && <ExportView />}
               {settingsView === 'language' && <LanguageView />}
               {settingsView === 'legal' && <LegalView />}
+              {settingsView === 'profile' && <ProfileView />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -121,6 +124,15 @@ function SettingsRoot() {
   const { data: recurring } = useRecurring()
   const haptic = useHaptic()
   const [passwordOpen, setPasswordOpen] = React.useState(false)
+  const [biometricOn, setBiometricOn] = React.useState(false)
+  const [biometricSupported, setBiometricSupported] = React.useState<boolean | null>(null)
+  const [biometricBusy, setBiometricBusy] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!authUser) return
+    setBiometricOn(biometricEnabled(authUser.id))
+    platformBiometricsAvailable().then(setBiometricSupported).catch(() => setBiometricSupported(false))
+  }, [authUser?.id])
 
   const userName = home?.user.name ?? authUser?.name ?? (language === 'es' ? 'Amigo' : 'Friend')
   const accountCount = pickers?.accounts.length ?? 4
@@ -137,33 +149,23 @@ function SettingsRoot() {
       {/* User card */}
       <div className="flex items-center gap-3 rounded-[18px] bg-card p-4">
         <div
-          className="flex h-14 w-14 items-center justify-center rounded-full text-[20px] font-semibold text-white"
+          className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full text-[20px] font-semibold text-white"
           style={{ backgroundColor: home?.user.avatarColor ?? 'var(--senlie)' }}
         >
-          {userName.charAt(0).toUpperCase()}
+          {(home?.user.avatarUrl || authUser?.avatarUrl) ? (
+            <img src={home?.user.avatarUrl || authUser?.avatarUrl || ''} alt="" className="h-full w-full object-cover" />
+          ) : (
+            userName.charAt(0).toUpperCase()
+          )}
         </div>
         <div className="flex-1">
           <div className="text-[17px] font-semibold tracking-tight">{userName}</div>
           <div className="text-[13px] text-muted-foreground">{authUser?.email ?? ''}</div>
         </div>
         <button
-          onClick={async () => {
+          onClick={() => {
             haptic('light')
-            const newName = window.prompt(t('settings.namePrompt'), userName)
-            if (newName && newName.trim() && newName !== userName) {
-              try {
-                const res = await fetch('/api/budget/user', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ name: newName.trim() }),
-                })
-                if (!res.ok) throw new Error('Failed')
-                toast.success(t('settings.nameUpdated'))
-                bumpData()
-              } catch {
-                toast.error(t('settings.nameUpdateFailed'))
-              }
-            }
+            goTo('profile')
           }}
           className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-medium text-muted-foreground"
         >
@@ -309,14 +311,40 @@ function SettingsRoot() {
             }}
           />
         </div>
-        <SettingsRow icon={Fingerprint} label={t('settings.faceId')} value={t('settings.immediately')} onClick={() => {
-          haptic('light')
-          toast.info(t('settings.faceIdManaged'))
-        }} />
-        <SettingsRow icon={Shield} label={t('settings.appLock')} value={t('settings.on')} onClick={() => {
-          haptic('light')
-          toast.info(t('settings.appLockManaged'))
-        }} />
+        <SettingsRow
+          icon={Fingerprint}
+          label={t('bio.settingTitle')}
+          value={biometricSupported === false ? t('bio.notSupported') : biometricOn ? t('settings.on') : t('settings.off')}
+          onClick={async () => {
+            if (!authUser || biometricBusy) return
+            haptic('medium')
+            if (biometricOn) {
+              disableBiometricUnlock(authUser.id)
+              setBiometricOn(false)
+              toast.success(t('bio.disabled'))
+              return
+            }
+            setBiometricBusy(true)
+            try {
+              await enableBiometricUnlock({ id: authUser.id, email: authUser.email, name: authUser.name })
+              setBiometricOn(true)
+              toast.success(t('bio.enabled'))
+            } catch (e) {
+              toast.error(t('bio.setupFailed'), { description: e instanceof Error ? e.message : undefined })
+            } finally {
+              setBiometricBusy(false)
+            }
+          }}
+        />
+        <SettingsRow
+          icon={Shield}
+          label={t('settings.appLock')}
+          value={biometricOn ? t('bio.whenLeaving') : t('settings.off')}
+          onClick={() => {
+            haptic('light')
+            toast.info(biometricOn ? t('bio.appLockActive') : t('bio.enableFirst'))
+          }}
+        />
         <SettingsRow
           icon={Bell}
           label={t('settings.notifications')}
@@ -388,7 +416,7 @@ function SettingsRoot() {
           <SenlieSymbol size={36} className="text-foreground" />
           <div className="text-[16px] font-semibold tracking-tight">Senlie Budget</div>
           <div className="text-[12px] text-muted-foreground">{t('settings.bySenlie')}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground/70">{t('settings.version')} 0.5.0</div>
+          <div className="mt-1 text-[11px] text-muted-foreground/70">{t('settings.version')} 0.6.0</div>
           <div className="text-[11px] text-muted-foreground/70">{t('settings.tagline')}</div>
         </div>
         <SettingsRow

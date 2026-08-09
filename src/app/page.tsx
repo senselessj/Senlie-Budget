@@ -17,6 +17,9 @@ import { TransactionDetailSheet } from '@/components/senlie/transaction-detail-s
 import { SettingsSheet } from '@/components/senlie/settings-sheet'
 import { AddEntitySheet } from '@/components/senlie/add-entity-sheet'
 import { AppNavigationGuard } from '@/components/pwa/app-navigation-guard'
+import { EditGoalSheet } from '@/components/senlie/edit-goal-sheet'
+import { BiometricLockGate } from '@/components/senlie/biometric-lock-gate'
+import { AppWalkthrough } from '@/components/senlie/app-walkthrough'
 
 export default function Home() {
   const activeTab = useSenlieUI((s) => s.activeTab)
@@ -27,6 +30,7 @@ export default function Home() {
   const language = useSenlieUI((s) => s.language)
   const addSheetOpen = useSenlieUI((s) => s.addSheetOpen)
   const editingTransactionId = useSenlieUI((s) => s.editingTransactionId)
+  const editingGoalId = useSenlieUI((s) => s.editingGoalId)
   const settingsOpen = useSenlieUI((s) => s.settingsOpen)
   const addEntityType = useSenlieUI((s) => s.addEntityType)
   const selectedTransactionId = useSenlieUI((s) => s.selectedTransactionId)
@@ -35,6 +39,7 @@ export default function Home() {
   const appSheetOpen = Boolean(
     addSheetOpen ||
     editingTransactionId ||
+    editingGoalId ||
     settingsOpen ||
     addEntityType ||
     selectedTransactionId ||
@@ -75,6 +80,8 @@ export default function Home() {
   return (
     <div className="relative flex min-h-[100dvh] flex-col bg-background">
       <AppNavigationGuard />
+      <BiometricLockGate />
+      <AppWalkthrough />
       <main className="flex-1 pb-32 pt-[env(safe-area-inset-top)]">
         <AnimatePresence mode="wait">
           <motion.div
@@ -100,6 +107,7 @@ export default function Home() {
       <AddTransactionSheet />
       <SettingsSheet />
       <AddEntitySheet />
+      <EditGoalSheet />
     </div>
   )
 }

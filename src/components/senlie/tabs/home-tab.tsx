@@ -96,6 +96,7 @@ export function HomeTab() {
         </div>
         <button
           type="button"
+          data-tour="settings"
           onClick={() => {
             haptic('light')
             setSettingsOpen(true)
@@ -104,7 +105,11 @@ export function HomeTab() {
           className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold text-white shadow-card"
           style={{ backgroundColor: data.user.avatarColor, boxShadow: '0 0 0 2px var(--background), 0 0 0 4px rgba(0,0,0,0.06)' }}
         >
-          {firstName.charAt(0).toUpperCase()}
+          {data.user.avatarUrl ? (
+            <img src={data.user.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+          ) : (
+            firstName.charAt(0).toUpperCase()
+          )}
         </button>
       </motion.header>
 
@@ -116,6 +121,7 @@ export function HomeTab() {
       >
         <button
           type="button"
+          data-tour="available"
           onClick={() => {
             haptic('light')
             toggleHideBalances()

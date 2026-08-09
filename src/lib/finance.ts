@@ -99,10 +99,13 @@ export async function getHomeSummary(): Promise<HomeSummary> {
   )
   const budgetTotal = committed
   const budgetRemaining = budgetTotal - spent
-  // "Available to spend" = expected monthly income - spent so far.
-  // Uses income target (full month) so the number stays useful mid-month
-  // even before all paychecks have arrived.
-  const available = Math.max(0, budget.incomeTarget - spent)
+  // "Available" is real money the user has now, not projected monthly income.
+  // On first setup this therefore equals the balances they entered during
+  // onboarding; afterwards transactions keep account balances current.
+  const moneyAccounts = await db.account.findMany({
+    where: { userId: user.id, type: { in: ['checking', 'cash', 'wallet', 'savings'] }, isArchived: false },
+  })
+  const available = moneyAccounts.reduce((sum, account) => sum + account.currentBalance, 0)
   const actualSaved = Math.max(0, income - spent)
 
   // Bills due = sum of upcoming recurring expenses (next 14 days, not yet posted)
@@ -274,10 +277,9 @@ export async function getHomeSummary(): Promise<HomeSummary> {
 
   // ----------------- Safe to spend -----------------
   // Available cash (sum of liquid accounts) - unpaid bills - savings goal target / days remaining
-  const liquidAccounts = await db.account.findMany({
-    where: { userId: user.id, type: { in: ['checking', 'cash', 'wallet'] }, isArchived: false },
-  })
-  const liquidTotal = liquidAccounts.reduce((s, a) => s + a.currentBalance, 0)
+  const liquidTotal = moneyAccounts
+    .filter((account) => ['checking', 'cash', 'wallet'].includes(account.type))
+    .reduce((s, a) => s + a.currentBalance, 0)
   const savingsGoalMonthly = 6500 // from spec
   const flexibleAvailable = Math.max(0, liquidTotal - billsDue - savingsGoalMonthly)
   const safeToSpend = {
@@ -323,6 +325,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
       id: user.id,
       name: user.name,
       avatarColor: user.avatarColor,
+      avatarUrl: user.avatarUrl ?? null,
       currencySymbol: user.currencySymbol,
       currencyCode: user.currencyCode,
       hideBalances: user.hideBalances,

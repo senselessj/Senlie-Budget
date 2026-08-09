@@ -9,6 +9,10 @@ export interface SenlieUser {
   id: string
   email: string
   name: string
+  avatarUrl: string | null
+  pronouns: string | null
+  birthDate: string | null
+  walkthroughCompleted: boolean
   onboardingComplete: boolean
   termsAccepted: boolean
   language: Language
@@ -31,6 +35,8 @@ interface AuthState {
   verifyOtp: (email: string, token: string) => Promise<void>
   signOut: () => Promise<void>
   completeOnboarding: (language?: Language) => void
+  completeWalkthrough: () => void
+  updateLocalProfile: (patch: Partial<Pick<SenlieUser, 'name' | 'avatarUrl' | 'pronouns' | 'birthDate'>>) => void
   clearError: () => void
 }
 
@@ -86,7 +92,7 @@ async function loadProfile(authUser: User): Promise<SenlieUser> {
   const readProfile = async () => {
     const { data, error } = await client
       .from('users')
-      .select('id,email,name,onboarding_complete,terms_accepted,language')
+      .select('id,email,name,avatar_url,pronouns,birth_date,walkthrough_completed,onboarding_complete,terms_accepted,language')
       .eq('id', authUser.id)
       .maybeSingle()
 
@@ -134,6 +140,10 @@ async function loadProfile(authUser: User): Promise<SenlieUser> {
     id: data.id,
     email: data.email ?? authUser.email ?? '',
     name: data.name ?? authUser.email?.split('@')[0] ?? 'Friend',
+    avatarUrl: data.avatar_url ?? null,
+    pronouns: data.pronouns ?? null,
+    birthDate: data.birth_date ?? null,
+    walkthroughCompleted: Boolean(data.walkthrough_completed),
     onboardingComplete: Boolean(data.onboarding_complete),
     termsAccepted: Boolean(data.terms_accepted),
     language: data.language === 'es' ? 'es' : 'en',
@@ -347,6 +357,14 @@ export const useAuth = create<AuthState>((set, get) => ({
       await mirrorServerSession(null)
       set({ user: null, pendingEmail: null, error: null, isLoading: false })
     }
+  },
+
+  completeWalkthrough: () => {
+    set((s) => ({ user: s.user ? { ...s.user, walkthroughCompleted: true } : null }))
+  },
+
+  updateLocalProfile: (patch) => {
+    set((s) => ({ user: s.user ? { ...s.user, ...patch } : null }))
   },
 
   completeOnboarding: (language) => {

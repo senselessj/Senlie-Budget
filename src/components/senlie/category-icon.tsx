@@ -70,12 +70,14 @@ export function AccountIcon({
   size = 40,
   iconSize = 20,
   className,
+  rounded = 'rounded-[12px]',
 }: {
   name: string
   color?: string
   size?: number
   iconSize?: number
   className?: string
+  rounded?: string
 }) {
   const iconName = lucideIcon(name)
   const Icon = (LucideIcons as any)[iconName] as React.ComponentType<{
@@ -88,7 +90,7 @@ export function AccountIcon({
     const Fallback = LucideIcons.Wallet
     return (
       <div
-        className={cn('flex items-center justify-center shrink-0 rounded-[12px]', className)}
+        className={cn('flex items-center justify-center shrink-0', rounded, className)}
         style={{
           width: size,
           height: size,
@@ -103,7 +105,7 @@ export function AccountIcon({
 
   return (
     <div
-      className={cn('flex items-center justify-center shrink-0 rounded-[12px]', className)}
+      className={cn('flex items-center justify-center shrink-0', rounded, className)}
       style={{
         width: size,
         height: size,

@@ -48,6 +48,13 @@ create table if not exists public.users (
   updated_at timestamptz not null default now()
 );
 
+-- Profile fields added after the first public release. `alter table` keeps this
+-- one-shot file safe for existing Senlie projects as well as new ones.
+alter table public.users add column if not exists avatar_url text;
+alter table public.users add column if not exists pronouns text;
+alter table public.users add column if not exists birth_date date;
+alter table public.users add column if not exists walkthrough_completed boolean not null default false;
+
 create table if not exists public.accounts (
   id text primary key default gen_random_uuid()::text,
   user_id uuid not null references public.users(id) on delete cascade,
@@ -380,6 +387,32 @@ grant select, insert, update, delete on public.budgets to authenticated;
 grant select, insert, update, delete on public.budget_categories to authenticated;
 grant select, insert, update, delete on public.recurring_rules to authenticated;
 grant select, insert, update, delete on public.goals to authenticated;
+
+-- ── Profile pictures ─────────────────────────────────────────────────
+-- Public avatar URLs are intentional: profile pictures are display assets,
+-- while financial data remains private behind RLS. Each user can only write
+-- inside avatars/<their-auth-uuid>/...
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 3145728, array['image/jpeg','image/png','image/webp','image/heic','image/heif'])
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists senlie_avatars_insert_own on storage.objects;
+drop policy if exists senlie_avatars_update_own on storage.objects;
+drop policy if exists senlie_avatars_delete_own on storage.objects;
+
+create policy senlie_avatars_insert_own on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy senlie_avatars_update_own on storage.objects
+  for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy senlie_avatars_delete_own on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 commit;
 

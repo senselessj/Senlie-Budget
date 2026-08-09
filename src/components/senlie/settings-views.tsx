@@ -238,6 +238,7 @@ export function GoalsView() {
   const { data: home } = useHomeSummary()
   const symbol = home?.user.currencySymbol ?? 'RD$'
   const hideBalances = useSenlieUI((s) => s.hideBalances)
+  const setEditingGoalId = useSenlieUI((s) => s.setEditingGoalId)
   const t = useT()
   const { locale } = useLanguage()
   const items = goals ?? []
@@ -262,7 +263,7 @@ export function GoalsView() {
           <div
             className="h-2 rounded-full"
             style={{
-              width: `${Math.min(100, (totalSaved / totalTarget) * 100)}%`,
+              width: `${totalTarget > 0 ? Math.min(100, (totalSaved / totalTarget) * 100) : 0}%`,
               backgroundColor: 'var(--senlie)',
             }}
           />
@@ -275,12 +276,14 @@ export function GoalsView() {
           const pct = Math.round(g.progress * 100)
           const color = g.color
           return (
-            <motion.div
+            <motion.button
+              type="button"
               key={g.id}
+              onClick={() => setEditingGoalId(g.id)}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.25 }}
-              className="rounded-[18px] bg-card p-4"
+              className="w-full rounded-[18px] bg-card p-4 text-left transition-transform active:scale-[0.99]"
             >
               <div className="flex items-center gap-3">
                 <CategoryIcon name={g.icon} color={color} size={40} iconSize={20} />
@@ -313,7 +316,7 @@ export function GoalsView() {
                   {t('sv.ofTarget', { amount: hideBalances ? maskBalance(symbol) : formatMoney(g.targetAmount, { symbol, decimalPlaces: 0 }) })}
                 </span>
               </div>
-            </motion.div>
+            </motion.button>
           )
         })}
       </div>
@@ -937,7 +940,7 @@ function LegalText({ doc }: { doc: 'terms' | 'privacy' }) {
 // ============================================================================
 // Shared detail-view shell with a back button
 // ============================================================================
-function DetailView({
+export function DetailView({
   title,
   subtitle,
   children,

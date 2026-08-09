@@ -21,6 +21,7 @@ export function BottomTabBar() {
   const setAddSheetOpen = useSenlieUI((s) => s.setAddSheetOpen)
   const addSheetOpen = useSenlieUI((s) => s.addSheetOpen)
   const editingTransactionId = useSenlieUI((s) => s.editingTransactionId)
+  const editingGoalId = useSenlieUI((s) => s.editingGoalId)
   const settingsOpen = useSenlieUI((s) => s.settingsOpen)
   const addEntityType = useSenlieUI((s) => s.addEntityType)
   const selectedTransactionId = useSenlieUI((s) => s.selectedTransactionId)
@@ -33,6 +34,7 @@ export function BottomTabBar() {
   const modalOpen =
     addSheetOpen ||
     Boolean(editingTransactionId) ||
+    Boolean(editingGoalId) ||
     settingsOpen ||
     Boolean(addEntityType) ||
     Boolean(selectedTransactionId) ||
@@ -58,6 +60,7 @@ export function BottomTabBar() {
           className="absolute left-1/2 -top-7 z-10 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full text-white shadow-float"
           style={{ backgroundColor: 'var(--senlie)' }}
           aria-label={t('accessibility.addTransaction')}
+          data-tour="add"
         >
           <Plus size={26} strokeWidth={2.6} />
         </motion.button>
@@ -86,6 +89,7 @@ export function BottomTabBar() {
                   isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
                 aria-current={isActive ? 'page' : undefined}
+                data-tour={`tab-${tab.key}`}
               >
                 {isActive && (
                   <motion.div

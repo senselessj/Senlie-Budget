@@ -87,6 +87,7 @@ export interface HomeSummary {
     id: string
     name: string
     avatarColor: string
+    avatarUrl?: string | null
     currencySymbol: string
     currencyCode: string
     hideBalances: boolean

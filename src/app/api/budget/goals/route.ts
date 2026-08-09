@@ -49,6 +49,46 @@ export async function POST(req: NextRequest) {
   }
 }
 
+
+// PATCH /api/budget/goals — edit an existing savings goal
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const id = body?.id
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+    await requireGoalOwnership(id)
+
+    const targetAmount = Number(body.targetAmount)
+    const currentAmount = Number(body.currentAmount)
+    if (!body.name || !String(body.name).trim()) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+    if (!Number.isFinite(targetAmount) || targetAmount <= 0) {
+      return NextResponse.json({ error: 'Target amount must be positive' }, { status: 400 })
+    }
+    if (!Number.isFinite(currentAmount) || currentAmount < 0) {
+      return NextResponse.json({ error: 'Saved amount cannot be negative' }, { status: 400 })
+    }
+
+    const goal = await db.goal.update({
+      where: { id },
+      data: {
+        name: String(body.name).trim(),
+        targetAmount,
+        currentAmount,
+        targetDate: body.targetDate ? new Date(body.targetDate) : null,
+        color: body.color || '#5965F3',
+        icon: body.icon || 'target',
+      },
+    })
+    return NextResponse.json({ ok: true, goal })
+  } catch (e: any) {
+    if (e instanceof OwnershipError) return NextResponse.json({ error: e.message }, { status: e.statusCode })
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
 // DELETE /api/budget/goals?id=...
 export async function DELETE(req: NextRequest) {
   try {

@@ -21,6 +21,7 @@ export type SettingsView =
   | 'export'
   | 'language'
   | 'legal'
+  | 'profile'
 
 // What kind of entity the AddEntitySheet is creating.
 export type AddEntityType = 'category' | 'account' | 'goal' | 'recurring'
@@ -29,6 +30,7 @@ export interface SenlieNavigationSnapshot {
   activeTab: TabKey
   addSheetOpen: boolean
   editingTransactionId: string | null
+  editingGoalId: string | null
   settingsOpen: boolean
   settingsView: SettingsView
   addEntityType: AddEntityType | null
@@ -48,6 +50,7 @@ export function makeNavigationSnapshot(state: SenlieUIState): SenlieNavigationSn
     activeTab: state.activeTab,
     addSheetOpen: state.addSheetOpen,
     editingTransactionId: state.editingTransactionId,
+    editingGoalId: state.editingGoalId,
     settingsOpen: state.settingsOpen,
     settingsView: state.settingsView,
     addEntityType: state.addEntityType,
@@ -90,6 +93,9 @@ interface SenlieUIState {
   // Transaction being edited (if any). When set, AddTransactionSheet opens in edit mode.
   editingTransactionId: string | null
   setEditingTransactionId: (id: string | null) => void
+
+  editingGoalId: string | null
+  setEditingGoalId: (id: string | null) => void
 
   settingsOpen: boolean
   setSettingsOpen: (v: boolean) => void
@@ -170,6 +176,18 @@ export const useSenlieUI = create<SenlieUIState>()(
           pushHistory(makeNavigationSnapshot(get()))
         } else {
           requestHistoryBack(() => set({ editingTransactionId: null }))
+        }
+      },
+
+      editingGoalId: null,
+      setEditingGoalId: (id) => {
+        const current = get().editingGoalId
+        if (id === current) return
+        if (id) {
+          set({ editingGoalId: id })
+          pushHistory(makeNavigationSnapshot(get()))
+        } else {
+          requestHistoryBack(() => set({ editingGoalId: null }))
         }
       },
 
@@ -255,6 +273,7 @@ export const useSenlieUI = create<SenlieUIState>()(
           activeTab: snapshot.activeTab,
           addSheetOpen: snapshot.addSheetOpen,
           editingTransactionId: snapshot.editingTransactionId,
+          editingGoalId: snapshot.editingGoalId,
           settingsOpen: snapshot.settingsOpen,
           settingsView: snapshot.settingsView,
           addEntityType: snapshot.addEntityType,

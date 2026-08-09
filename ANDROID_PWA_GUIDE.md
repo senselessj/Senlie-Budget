@@ -89,3 +89,10 @@ Senlie now exposes two manifests:
 - `/android-manifest.webmanifest` — minimal Bubblewrap/TWA manifest with absolute HTTPS launch and icon URLs.
 
 If Bubblewrap reports `Invalid URL` immediately after "Initializing application from Web Manifest", deploy v0.4.5 first, verify both URLs return JSON, and rerun `BUILD_ANDROID_APK.bat`.
+
+
+## v0.4.6: Windows `Invalid URL` after manifest preflight
+
+v0.4.6 changes how the manifest URL is handed from `cmd.exe`/npm to Bubblewrap. The URL is validated by Node first, then passed as a separate unquoted `--manifest` argument. This avoids literal quote characters surviving the Windows command-shim chain.
+
+If v0.4.5 is already deployed and both manifest preflight checks pass, this specific fix is local-only; you can run the v0.4.6 builder without another Vercel deployment.

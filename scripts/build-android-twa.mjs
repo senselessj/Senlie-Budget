@@ -36,13 +36,13 @@ console.log(`\nChecking the live Senlie PWA:\n${pwaManifestUrl}\n`)
 try {
   const response = await fetch(pwaManifestUrl, {
     redirect: 'follow',
-    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.5' },
+    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.6' },
   })
 
   if (!response.ok) {
     console.error(`The live PWA manifest returned HTTP ${response.status} ${response.statusText}.`)
     console.error('\nThe Android wrapper can only be created after the PWA version is deployed to Vercel.')
-    console.error('Push/deploy Senlie Budget v0.4.5, then verify this URL opens in your browser:')
+    console.error('Push/deploy the current Senlie PWA, then verify this URL opens in your browser:')
     console.error(pwaManifestUrl)
     console.error('\nAfter it displays JSON, run BUILD_ANDROID_APK.bat again.\n')
     process.exit(1)
@@ -85,12 +85,12 @@ console.log(`\nChecking the Bubblewrap-safe manifest:\n${manifestUrl}\n`)
 try {
   const response = await fetch(manifestUrl, {
     redirect: 'follow',
-    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.5' },
+    headers: { 'user-agent': 'Senlie-Android-Builder/0.4.6' },
   })
 
   if (!response.ok) {
     console.error(`The Android manifest returned HTTP ${response.status} ${response.statusText}.`)
-    console.error('Deploy Senlie Budget v0.4.5 before running the Android builder.\n')
+    console.error('Deploy the current Senlie PWA before running the Android builder.\n')
     process.exit(1)
   }
 
@@ -110,7 +110,7 @@ try {
 } catch (error) {
   console.error('The Bubblewrap-safe manifest is invalid.')
   console.error(error instanceof Error ? error.message : String(error))
-  console.error(`\nOpen this URL and make sure v0.4.5 is deployed:\n${manifestUrl}\n`)
+  console.error(`\nOpen this URL and make sure the current PWA is deployed:\n${manifestUrl}\n`)
   process.exit(1)
 }
 
@@ -138,11 +138,20 @@ if (process.platform === 'win32') {
   // npm is a .cmd shim on Windows. Run it through cmd.exe, but only quote the
   // manifest value (which we control as a normalized HTTPS URL), not npm flags.
   const comspec = process.env.ComSpec || 'cmd.exe'
+  // IMPORTANT: do not wrap the URL inside --manifest="..." here.
+  // Going through npm.cmd -> cmd.exe -> Bubblewrap on Windows can preserve
+  // those inner quote characters in the parsed option value. Bubblewrap then
+  // receives a value like "https://..." (quotes included), and its URL
+  // constructor throws ERR_INVALID_URL before it can even read the manifest.
+  // The normalized Senlie URL cannot contain spaces or cmd metacharacters,
+  // so pass it as a separate, unquoted argument.
   const commandLine = [
-    'npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap init',
-    `--manifest="${manifestUrl}"`,
+    'npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap init --manifest',
+    manifestUrl,
   ].join(' ')
 
+  console.log(`Manifest argument (exact): ${JSON.stringify(manifestUrl)}`)
+  console.log(`Manifest argument length: ${manifestUrl.length}`)
   console.log(`Running: ${commandLine}\n`)
   result = spawnSync(comspec, ['/d', '/c', commandLine], {
     cwd: new URL('../android-twa/', import.meta.url),

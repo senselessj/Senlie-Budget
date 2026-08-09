@@ -96,3 +96,8 @@ If Bubblewrap reports `Invalid URL` immediately after "Initializing application 
 v0.4.6 changes how the manifest URL is handed from `cmd.exe`/npm to Bubblewrap. The URL is validated by Node first, then passed as a separate unquoted `--manifest` argument. This avoids literal quote characters surviving the Windows command-shim chain.
 
 If v0.4.5 is already deployed and both manifest preflight checks pass, this specific fix is local-only; you can run the v0.4.6 builder without another Vercel deployment.
+
+
+## Play Billing minimum Android version
+
+When Play Billing is enabled, Android Browser Helper Billing requires API 23 or newer. Senlie v0.4.7 automatically sets `minSdkVersion` to 23 in `android-twa/twa-manifest.json` and regenerates the Bubblewrap project before building. Do not use `tools:overrideLibrary` to bypass this requirement; that can allow installation on Android versions where the billing library may fail at runtime.

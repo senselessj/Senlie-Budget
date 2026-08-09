@@ -4,7 +4,7 @@ cd /d "%~dp0"
 title Senlie Budget - Android Builder
 
 echo.
-echo  Senlie Budget Android Builder v0.4.6
+echo  Senlie Budget Android Builder v0.4.7
 echo  ==================================
 echo.
 set /p SENLIE_APP_URL=Paste your deployed HTTPS Senlie Budget URL: 
@@ -29,8 +29,16 @@ if not exist android-twa\twa-manifest.json (
 )
 
 echo.
-echo Building signed APK/AAB...
+echo Preparing Android project compatibility...
+call npm run android:prepare || goto :fail
+
+echo.
+echo Regenerating Android project from Bubblewrap manifest...
 cd android-twa
+call npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap update --skipVersionUpgrade || goto :fail2
+
+echo.
+echo Building signed APK/AAB...
 call npm exec --yes --package=@bubblewrap/cli@1.24.1 -- bubblewrap build || goto :fail2
 
 echo.
